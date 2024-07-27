@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>sunyu.util</groupId>
+    <artifactId>util-kafka</artifactId>
+    <version>jdk8-kafka0.9.x-v1.0</version>
+
+    <properties>
+        <java.version>1.8</java.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>${project.build.sourceEncoding}</project.reporting.outputEncoding>
+    </properties>
+
+    <distributionManagement>
+        <!-- 分发至远程仓库，公司私服 -->
+        <!-- 要修改maven/conf/setting.xml，注意，id要相同 -->
+        <repository>
+            <id>releases</id>
+            <url>http://192.168.13.86:8081/repository/maven-releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>snapshots</id>
+            <url>http://192.168.13.86:8081/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <dependencies>
+        <!-- https://central.sonatype.com/artifact/cn.hutool/hutool-all/versions -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>5.8.29</version>
+        </dependency>
+        <!-- https://central.sonatype.com/artifact/org.apache.kafka/kafka-clients/versions -->
+        <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+            <version>0.9.0.1</version>
+        </dependency>
+        <!-- https://central.sonatype.com/artifact/org.junit.jupiter/junit-jupiter/versions -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.3</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-shade-plugin/versions -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.6.0</version>
+                <configuration>
+                    <!-- 打包时是否生成dependency-reduced-pom.xml -->
+                    <createDependencyReducedPom>false</createDependencyReducedPom>
+                    <!--只包含该项目代码中用到的jar,在父项目中引入了，但在当前模块中没有用到就会被删掉-->
+                    <minimizeJar>true</minimizeJar>
+                    <!-- 重命名包名解决冲突 -->
+                    <relocations>
+                        <relocation>
+                            <pattern>org.apache.kafka</pattern>
+                            <shadedPattern>util.kafka.org.apache.kafka</shadedPattern>
+                        </relocation>
+                    </relocations>
+                </configuration>
+                <executions>
+                    <execution>
+                        <configuration>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/**</exclude>
+                                        <exclude>LICENSE</exclude>
+                                        <exclude>NOTICE</exclude>
+                                        <exclude>darwin/**</exclude>
+                                        <exclude>kafka/**</exclude>
+                                        <exclude>linux/**</exclude>
+                                        <exclude>org/slf4j/**</exclude>
+                                        <exclude>org/xerial/**</exclude>
+                                        <exclude>win32/**</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- 源码也上传到私服 -->
+            <!-- https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-source-plugin/versions -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <phase>compile</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- 跳过单元测试 -->
+            <!-- https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-surefire-plugin/versions -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>
