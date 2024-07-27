@@ -26,7 +26,6 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     private static Properties config = new Properties();
     private Consumer<String, String> consumer;
     private volatile Map<TopicPartition, OffsetAndMetadata> currentOffsets = new HashMap<>();
-
     private static List<String> topics;
 
     /**
@@ -36,10 +35,10 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
      */
     public static KafkaConsumerUtil of() {
         //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
-        //consumerConfig.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+        //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
         //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
         config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"); // latest  earliest
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         return INSTANCE;
@@ -101,19 +100,19 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     }
 
     /**
-     * 持续消费一批批消息，整批一起处理
+     * 持续消费，一条条处理，如果不抛异常，则会自动提交offset
      *
-     * @param callback 消息回调
+     * @param callback 回调处理消息
      */
     public void pollRecord(ConsumerRecordCallback callback) {
         while (keepConsuming) {
             ConsumerRecords<String, String> records = consumer.poll(100);
             try {
                 for (ConsumerRecord<String, String> record : records) {
-                    callback.exec(record);
-                    currentOffsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1));
+                    callback.exec(record);//回调，由调用方处理消息
+                    currentOffsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1));//记录消息偏移量+1
                     try {
-                        consumer.commitSync(currentOffsets);
+                        consumer.commitSync(currentOffsets);//提交偏移量
                     } catch (Exception e) {
                         break;
                     }
