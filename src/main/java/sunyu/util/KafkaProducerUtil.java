@@ -20,23 +20,29 @@ import java.util.concurrent.Future;
  */
 public enum KafkaProducerUtil implements Serializable, Closeable {
     INSTANCE;
-
     private Log log = LogFactory.get();
-
-
-    private static Properties config = new Properties();
+    private Properties config = new Properties();
     private Producer<String, String> producer;
 
+
     /**
-     * 初始化默认配置
+     * 设置kafka地址
+     *
+     * @param bootstrapServers kafka地址，多个地址使用英文半角逗号分割(cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092)
+     * @return
+     */
+    public KafkaProducerUtil setBootstrapServers(String bootstrapServers) {
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        return INSTANCE;
+    }
+
+    /**
+     * 构建工具类
      *
      * @return
      */
-    public static KafkaProducerUtil of() {
-        // Kafka bootstrap server
+    public KafkaProducerUtil build() {
         //producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
-
-        // Serializer class
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 
@@ -89,27 +95,6 @@ public enum KafkaProducerUtil implements Serializable, Closeable {
          * 以充分利用可用空间同时避免内存耗尽和系统抖动等问题。请注意，此值必须大于或等于 batch.size 和 compression.type 相关配置的总字节数。
          */
         //producerConfig.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
-
-        return INSTANCE;
-    }
-
-    /**
-     * 设置kafka地址
-     *
-     * @param bootstrapServers kafka地址，多个地址使用英文半角逗号分割(cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092)
-     * @return
-     */
-    public KafkaProducerUtil setBootstrapServers(String bootstrapServers) {
-        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        return INSTANCE;
-    }
-
-    /**
-     * 构建工具类
-     *
-     * @return
-     */
-    public KafkaProducerUtil build() {
         producer = new KafkaProducer<>(config);
         return INSTANCE;
     }
@@ -121,7 +106,7 @@ public enum KafkaProducerUtil implements Serializable, Closeable {
      * @param topic 主题
      * @param key   键
      * @param value 值
-     * @return
+     * @return Future
      */
     public Future<RecordMetadata> sendAsync(String topic, String key, String value) {
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
@@ -135,7 +120,7 @@ public enum KafkaProducerUtil implements Serializable, Closeable {
      * @param key      键
      * @param value    值
      * @param callback complete回调
-     * @return
+     * @return Future
      */
     public Future<RecordMetadata> sendAsync(String topic, String key, String value, ProducerCallback callback) {
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);

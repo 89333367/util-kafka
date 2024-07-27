@@ -84,7 +84,6 @@
                                         <exclude>darwin/**</exclude>
                                         <exclude>kafka/**</exclude>
                                         <exclude>linux/**</exclude>
-                                        <exclude>org/slf4j/**</exclude>
                                         <exclude>org/xerial/**</exclude>
                                         <exclude>win32/**</exclude>
                                     </excludes>

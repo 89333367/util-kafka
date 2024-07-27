@@ -18,31 +18,11 @@ import java.util.*;
  */
 public enum KafkaConsumerUtil implements Serializable, Closeable {
     INSTANCE;
-
     private Log log = LogFactory.get();
-
-    private static volatile boolean keepConsuming = true;
-
-    private static Properties config = new Properties();
+    private boolean keepConsuming = true;
+    private Properties config = new Properties();
     private Consumer<String, String> consumer;
-    private volatile Map<TopicPartition, OffsetAndMetadata> currentOffsets = new HashMap<>();
-    private static List<String> topics;
-
-    /**
-     * 初始化默认配置
-     *
-     * @return
-     */
-    public static KafkaConsumerUtil of() {
-        //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
-        //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
-        //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
-        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        return INSTANCE;
-    }
+    private List<String> topics;
 
     /**
      * 设置kafka地址
@@ -94,6 +74,13 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
      * @return
      */
     public KafkaConsumerUtil build() {
+        //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
+        //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+        //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         consumer = new KafkaConsumer<>(config);
         consumer.subscribe(topics);
         return INSTANCE;
@@ -102,7 +89,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     /**
      * 持续消费，一条条处理，如果不抛异常，则会自动提交offset
      *
-     * @param callback 回调处理消息
+     * @param callback 回调处理一条消息
      */
     public void pollRecord(ConsumerRecordCallback callback) {
         while (keepConsuming) {
@@ -110,14 +97,39 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             try {
                 for (ConsumerRecord<String, String> record : records) {
                     callback.exec(record);//回调，由调用方处理消息
-                    currentOffsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1));//记录消息偏移量+1
+                    Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+                    offsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1));//记录消息偏移量+1
                     try {
-                        consumer.commitSync(currentOffsets);//提交偏移量
+                        consumer.commitSync(offsets);//提交偏移量
                     } catch (Exception e) {
+                        //提交offset失败，跳出循环，重新获取消息
                         break;
                     }
                 }
             } catch (Exception e) {
+                log.error(e);
+            }
+        }
+    }
+
+    /**
+     * 持续消费，一批批处理，如果不抛异常，则会自动提交这一批的offset
+     *
+     * @param pollTime 拉取消息等待时间(建议设置100毫秒)
+     * @param callback 回调处理这一批消息
+     */
+    public void pollRecords(long pollTime, ConsumerRecordsCallback callback) {
+        while (keepConsuming) {
+            ConsumerRecords<String, String> records = consumer.poll(pollTime);
+            try {
+                callback.exec(records);
+                try {
+                    consumer.commitSync();
+                } catch (Exception e) {
+                    //提交offset失败
+                }
+            } catch (Exception e) {
+                //这批消息处理失败
                 log.error(e);
             }
         }

@@ -16,18 +16,20 @@
 ```java
 @Test
 void t001() {
-    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.of()
+    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
             .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .setGroupId("test_group_kafka_consumer_util")
             .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
             .build();
     kafkaConsumerUtil.pollRecord((record) -> {
-        log.debug("{}", record);
+        log.debug("收到消息 {}", record);
         //record.offset();
         //record.topic();
         //record.partition();
         //record.key();
         //record.value();
+        ThreadUtil.sleep(5000);
+        log.debug("处理完毕 {}", record);
     });
 }
 ```
@@ -37,7 +39,7 @@ void t001() {
 ```java
 @Test
 void 同步发送消息() {
-    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.of()
+    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.INSTANCE
             .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .build();
     kafkaProducerUtil.sendSync("主题", "键，这里可以为null", "值");
@@ -46,7 +48,7 @@ void 同步发送消息() {
 
 @Test
 void 同步发送消息并且自己处理metadata和exception() {
-    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.of()
+    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.INSTANCE
             .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .build();
     kafkaProducerUtil.sendSync("主题", "键，这里可以为null", "值", (metadata, exception) -> {
@@ -57,7 +59,7 @@ void 同步发送消息并且自己处理metadata和exception() {
 
 @Test
 void 异步发送消息() {
-    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.of()
+    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.INSTANCE
             .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .build();
     Future<RecordMetadata> recordMetadataFuture = kafkaProducerUtil.sendAsync("主题", "键，这里可以为null", "值");
@@ -73,7 +75,7 @@ void 异步发送消息() {
 
 @Test
 void 异步发送消息并且自己处理metadata和exception() {
-    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.of()
+    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.INSTANCE
             .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .build();
     Future<RecordMetadata> recordMetadataFuture = kafkaProducerUtil.sendAsync("主题", "键，这里可以为null", "值", (metadata, exception) -> {
@@ -91,7 +93,7 @@ void 异步发送消息并且自己处理metadata和exception() {
 
 @Test
 void 批量发送消息() {
-    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.of()
+    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.INSTANCE
             .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .build();
     for (int i = 0; i < 10000; i++) {
@@ -102,7 +104,7 @@ void 批量发送消息() {
 
 @Test
 void 关闭整个项目() {
-    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.of()
+    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.INSTANCE
             .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .build();
     //这里发送消息

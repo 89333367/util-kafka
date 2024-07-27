@@ -13,7 +13,7 @@ public class TestConsumer {
 
     @Test
     void t001() {
-        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.of()
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .setGroupId("test_group_kafka_consumer_util")
                 .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
