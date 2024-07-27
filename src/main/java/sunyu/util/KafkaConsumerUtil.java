@@ -95,20 +95,21 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     public void pollRecord(ConsumerRecordCallback callback) {
         while (keepConsuming) {
             ConsumerRecords<String, String> records = consumer.poll(100);
-            try {
-                for (ConsumerRecord<String, String> record : records) {
+            for (ConsumerRecord<String, String> record : records) {
+                try {
                     callback.exec(record);//回调，由调用方处理消息
                     Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
                     offsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1));//记录消息偏移量+1
                     try {
                         consumer.commitSync(offsets);//提交偏移量
                     } catch (Exception e) {
-                        //提交offset失败，跳出循环，重新获取消息
-                        break;
+                        log.warn("提交offsets出现异常 {}", offsets);
+                        break;//提交offset失败，跳出循环，重新获取消息
                     }
+                } catch (Exception e) {
+                    log.error("处理消息出现异常 {} {}", record, e);
+                    break;//如果当前条消息处理异常了，后面就不要再处理了，跳出循环
                 }
-            } catch (Exception e) {
-                log.error(e);
             }
         }
     }
@@ -127,11 +128,10 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 try {
                     consumer.commitSync();
                 } catch (Exception e) {
-                    //提交offset失败
+                    log.warn("提交offsets出现异常");
                 }
             } catch (Exception e) {
-                //这批消息处理失败
-                log.error(e);
+                log.error("这批消息处理失败 {}", e);
             }
         }
     }
@@ -238,7 +238,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
         try {
             consumer.close();
         } catch (Exception e) {
-            log.error(e);
+            log.warn("关闭consumer出现异常 {}", e);
         }
     }
 }

@@ -18,6 +18,7 @@ public class TestConsumer {
                 .setGroupId("test_group_kafka_consumer_util")
                 .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
                 .build();
+        //持续消费，一条一条处理，处理完毕后，只要不抛异常，会自动提交offset
         kafkaConsumerUtil.pollRecord((record) -> {
             log.debug("收到消息 {}", record);
             //record.offset();
@@ -37,6 +38,7 @@ public class TestConsumer {
                 .setGroupId("test_group_kafka_consumer_util")
                 .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
                 .build();
+        //重新调整某主题，某个分区的偏移量
         kafkaConsumerUtil.seek("US_GENERAL", 0, 7927573);
     }
 
@@ -48,6 +50,7 @@ public class TestConsumer {
                 .setGroupId("test_group_kafka_consumer_util")
                 .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
                 .build();
+        //将某主题，某个分区的偏移量调整到最后
         kafkaConsumerUtil.seekToEnd("US_GENERAL", 0);
     }
 
@@ -58,6 +61,7 @@ public class TestConsumer {
                 .setGroupId("test_group_kafka_consumer_util")
                 .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
                 .build();
+        //将某主题，某个分区的偏移量调整到最前
         kafkaConsumerUtil.seekToBeginning("US_GENERAL", 0);
     }
 
@@ -68,6 +72,7 @@ public class TestConsumer {
                 .setGroupId("test_group_kafka_consumer_util")
                 .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
                 .build();
+        //控制台debug查看某主题，某分区的偏移量情况
         kafkaConsumerUtil.showOffsets("US_GENERAL", 0);
     }
 
