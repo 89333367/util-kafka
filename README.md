@@ -9,7 +9,7 @@
 <dependency>
     <groupId>sunyu.util</groupId>
     <artifactId>util-kafka</artifactId>
-    <version>jdk8-kafka0.9.x-v1.0</version>
+    <version>kafka-clients0.9.0.1-v1.0</version>
 </dependency>
 ```
 ## kafka消费者
@@ -31,6 +31,57 @@ void t001() {
         ThreadUtil.sleep(5000);
         log.debug("处理完毕 {}", record);
     });
+}
+
+@Test
+void t002() {
+    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
+            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .setGroupId("test_group_kafka_consumer_util")
+            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+            .build();
+    kafkaConsumerUtil.seek("US_GENERAL", 0, 7927573);
+}
+
+
+@Test
+void t003() {
+    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
+            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .setGroupId("test_group_kafka_consumer_util")
+            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+            .build();
+    kafkaConsumerUtil.seekToEnd("US_GENERAL", 0);
+}
+
+@Test
+void t004() {
+    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
+            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .setGroupId("test_group_kafka_consumer_util")
+            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+            .build();
+    kafkaConsumerUtil.seekToBeginning("US_GENERAL", 0);
+}
+
+@Test
+void t005() {
+    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
+            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .setGroupId("test_group_kafka_consumer_util")
+            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+            .build();
+    kafkaConsumerUtil.showOffsets("US_GENERAL", 0);
+}
+
+@Test
+void t006() {
+    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
+            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .setGroupId("test_group_kafka_consumer_util")
+            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+            .build();
+    kafkaConsumerUtil.showPartitions("US_GENERAL");
 }
 ```
 
