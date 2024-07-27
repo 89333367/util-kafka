@@ -2,14 +2,14 @@
 
 > 适用于 kafka 0.9.x - kafka 1.x
 > 
-> 适用于 jdk 8 - 11
+> 适用于 jdk8+
 
 > 引入依赖
 ```xml
 <dependency>
     <groupId>sunyu.util</groupId>
     <artifactId>util-kafka</artifactId>
-    <version>kafka-clients0.9.0.1-v1.0</version>
+    <version>kafka-clients-0.9.0.1_v1.0</version>
 </dependency>
 ```
 ## kafka消费者
@@ -21,6 +21,7 @@ void t001() {
             .setGroupId("test_group_kafka_consumer_util")
             .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
             .build();
+    //持续消费，一条一条处理，处理完毕后，只要不抛异常，会自动提交offset
     kafkaConsumerUtil.pollRecord((record) -> {
         log.debug("收到消息 {}", record);
         //record.offset();
@@ -40,6 +41,7 @@ void t002() {
             .setGroupId("test_group_kafka_consumer_util")
             .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
             .build();
+    //重新调整某主题，某个分区的偏移量
     kafkaConsumerUtil.seek("US_GENERAL", 0, 7927573);
 }
 
@@ -51,6 +53,7 @@ void t003() {
             .setGroupId("test_group_kafka_consumer_util")
             .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
             .build();
+    //将某主题，某个分区的偏移量调整到最后
     kafkaConsumerUtil.seekToEnd("US_GENERAL", 0);
 }
 
@@ -61,6 +64,7 @@ void t004() {
             .setGroupId("test_group_kafka_consumer_util")
             .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
             .build();
+    //将某主题，某个分区的偏移量调整到最前
     kafkaConsumerUtil.seekToBeginning("US_GENERAL", 0);
 }
 
@@ -71,6 +75,7 @@ void t005() {
             .setGroupId("test_group_kafka_consumer_util")
             .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
             .build();
+    //控制台debug查看某主题，某分区的偏移量情况
     kafkaConsumerUtil.showOffsets("US_GENERAL", 0);
 }
 
@@ -82,6 +87,23 @@ void t006() {
             .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
             .build();
     kafkaConsumerUtil.showPartitions("US_GENERAL");
+}
+
+@Test
+void t007() {
+    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
+            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .setGroupId("test_group_kafka_consumer_util")
+            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+            .build();
+    //持续消费，一批一批处理，处理完毕后，只要不抛异常，会自动提交offset
+    kafkaConsumerUtil.pollRecords(100, records -> {
+        log.debug("本批拉取了 {} 条消息", records);
+        for (ConsumerRecord<String, String> record : records) {
+            log.debug("{}", record);
+            ThreadUtil.sleep(5000);//模拟record处理时间
+        }
+    });
 }
 ```
 
