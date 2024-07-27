@@ -222,7 +222,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
         KafkaConsumer<Object, Object> tmpConsumer = new KafkaConsumer<>(config);
         List<PartitionInfo> partitionInfos = tmpConsumer.partitionsFor(topic);
         for (PartitionInfo partitionInfo : partitionInfos) {
-            log.info("{}", partitionInfo);
+            log.debug("{}", partitionInfo);
         }
         tmpConsumer.close();
     }
