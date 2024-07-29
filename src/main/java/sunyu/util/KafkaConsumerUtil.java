@@ -3,7 +3,6 @@ package sunyu.util;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import org.apache.kafka.clients.consumer.*;
-import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
@@ -134,97 +133,6 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 log.error("这批消息处理失败 {}", e);
             }
         }
-    }
-
-
-    /**
-     * 调整偏移量
-     *
-     * @param topic     主题
-     * @param partition 分区号
-     * @param offset    偏移量
-     */
-    public void seek(String topic, int partition, long offset) {
-        KafkaConsumer<Object, Object> tmpConsumer = new KafkaConsumer<>(config);
-        TopicPartition topicPartition = new TopicPartition(topic, partition);
-        tmpConsumer.assign(Arrays.asList(topicPartition));
-        tmpConsumer.seek(topicPartition, offset);
-        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-        offsets.put(topicPartition, new OffsetAndMetadata(offset));
-        tmpConsumer.commitSync(offsets);
-        tmpConsumer.close();
-    }
-
-    /**
-     * 调整偏移量到LATEST
-     *
-     * @param topic     主题
-     * @param partition 分区号
-     */
-    public void seekToEnd(String topic, int partition) {
-        KafkaConsumer<Object, Object> tmpConsumer = new KafkaConsumer<>(config);
-        TopicPartition topicPartition = new TopicPartition(topic, partition);
-        tmpConsumer.assign(Arrays.asList(topicPartition));
-        tmpConsumer.seekToEnd(topicPartition);
-        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-        long offset = tmpConsumer.position(topicPartition);
-        offsets.put(topicPartition, new OffsetAndMetadata(offset));
-        tmpConsumer.commitSync(offsets);
-        tmpConsumer.close();
-    }
-
-    /**
-     * 调整偏移量到EARLIEST
-     *
-     * @param topic     主题
-     * @param partition 分区号
-     */
-    public void seekToBeginning(String topic, int partition) {
-        KafkaConsumer<Object, Object> tmpConsumer = new KafkaConsumer<>(config);
-        TopicPartition topicPartition = new TopicPartition(topic, partition);
-        tmpConsumer.assign(Arrays.asList(topicPartition));
-        tmpConsumer.seekToBeginning(topicPartition);
-        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-        long offset = tmpConsumer.position(topicPartition);
-        offsets.put(topicPartition, new OffsetAndMetadata(offset));
-        tmpConsumer.commitSync(offsets);
-        tmpConsumer.close();
-    }
-
-    /**
-     * 显示offset情况
-     *
-     * @param topic     主题
-     * @param partition 分区号
-     */
-    public void showOffsets(String topic, int partition) {
-        KafkaConsumer<Object, Object> tmpConsumer = new KafkaConsumer<>(config);
-        TopicPartition topicPartition = new TopicPartition(topic, partition);
-        tmpConsumer.assign(Arrays.asList(topicPartition));
-        tmpConsumer.seekToBeginning(topicPartition);
-        long offset = tmpConsumer.position(topicPartition);
-        log.debug("EARLIEST offset {} {} {}", topic, partition, offset);
-        OffsetAndMetadata committed = tmpConsumer.committed(topicPartition);
-        long committedOffset = (committed != null) ? committed.offset() : -1;
-        log.debug("current group offset {} {} {}", topic, partition, committedOffset);
-        tmpConsumer.seekToEnd(topicPartition);
-        offset = tmpConsumer.position(topicPartition);
-        log.debug("LATEST offset {} {} {}", topic, partition, offset);
-        tmpConsumer.close();
-    }
-
-    /**
-     * 显示主题的所有分区信息
-     *
-     * @param topic 主题
-     */
-    public void showPartitions(String topic) {
-        KafkaConsumer<Object, Object> tmpConsumer = new KafkaConsumer<>(config);
-        List<PartitionInfo> partitionInfos = tmpConsumer.partitionsFor(topic);
-        for (PartitionInfo partitionInfo : partitionInfos) {
-            log.debug("{}", partitionInfo);
-        }
-        tmpConsumer.close();
     }
 
     /**

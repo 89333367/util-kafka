@@ -67,7 +67,7 @@
                     <relocations>
                         <relocation>
                             <pattern>org.apache.kafka</pattern>
-                            <shadedPattern>util.kafka.org.apache.kafka</shadedPattern>
+                            <shadedPattern>relocation.org.apache.kafka</shadedPattern>
                         </relocation>
                     </relocations>
                 </configuration>
@@ -82,10 +82,10 @@
                                         <exclude>LICENSE</exclude>
                                         <exclude>NOTICE</exclude>
                                         <exclude>darwin/**</exclude>
-                                        <exclude>kafka/**</exclude>
                                         <exclude>linux/**</exclude>
                                         <exclude>org/xerial/**</exclude>
                                         <exclude>win32/**</exclude>
+                                        <exclude>kafka/kafka-version.properties</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
