@@ -41,61 +41,6 @@ void t002() {
             .setGroupId("test_group_kafka_consumer_util")
             .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
             .build();
-    //重新调整某主题，某个分区的偏移量
-    kafkaConsumerUtil.seek("US_GENERAL", 0, 7927573);
-}
-
-
-@Test
-void t003() {
-    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
-            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-            .build();
-    //将某主题，某个分区的偏移量调整到最后
-    kafkaConsumerUtil.seekToEnd("US_GENERAL", 0);
-}
-
-@Test
-void t004() {
-    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
-            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-            .build();
-    //将某主题，某个分区的偏移量调整到最前
-    kafkaConsumerUtil.seekToBeginning("US_GENERAL", 0);
-}
-
-@Test
-void t005() {
-    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
-            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-            .build();
-    //控制台debug查看某主题，某分区的偏移量情况
-    kafkaConsumerUtil.showOffsets("US_GENERAL", 0);
-}
-
-@Test
-void t006() {
-    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
-            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-            .build();
-    kafkaConsumerUtil.showPartitions("US_GENERAL");
-}
-
-@Test
-void t007() {
-    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
-            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-            .build();
     //持续消费，一批一批处理，处理完毕后，只要不抛异常，会自动提交offset
     kafkaConsumerUtil.pollRecords(100, records -> {
         log.debug("本批拉取了 {} 条消息", records);
@@ -184,5 +129,59 @@ void 关闭整个项目() {
 
     //如果整个项目需要关闭，调用close释放资源
     kafkaProducerUtil.close();
+}
+```
+
+
+### kafka偏移量使用
+```java
+@Test
+void t001() {
+    KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.INSTANCE
+            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .setGroupId("test_group_kafka_consumer_util")
+            .build();
+    //重新调整某主题，某个分区的偏移量
+    kafkaOffsetUtil.seek("US_GENERAL", 0, 7927573);
+}
+
+
+@Test
+void t002() {
+    KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.INSTANCE
+            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .setGroupId("test_group_kafka_consumer_util")
+            .build();
+    //将某主题，某个分区的偏移量调整到最后
+    kafkaOffsetUtil.seekToEnd("US_GENERAL", 0);
+}
+
+@Test
+void t003() {
+    KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.INSTANCE
+            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .setGroupId("test_group_kafka_consumer_util")
+            .build();
+    //将某主题，某个分区的偏移量调整到最前
+    kafkaOffsetUtil.seekToBeginning("US_GENERAL", 0);
+}
+
+@Test
+void t004() {
+    KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.INSTANCE
+            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .setGroupId("test_group_kafka_consumer_util")
+            .build();
+    //控制台debug查看某主题，某分区的偏移量情况
+    kafkaOffsetUtil.showOffsets("US_GENERAL", 0);
+}
+
+@Test
+void t005() {
+    KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.INSTANCE
+            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .setGroupId("test_group_kafka_consumer_util")
+            .build();
+    kafkaOffsetUtil.showPartitions("US_GENERAL");
 }
 ```
