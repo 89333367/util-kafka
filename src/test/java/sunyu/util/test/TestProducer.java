@@ -14,7 +14,7 @@ public class TestProducer {
 
     @Test
     void 同步发送消息() {
-        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.INSTANCE
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         kafkaProducerUtil.sendSync("主题", "键，这里可以为null", "值");
@@ -23,7 +23,7 @@ public class TestProducer {
 
     @Test
     void 同步发送消息并且自己处理metadata和exception() {
-        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.INSTANCE
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         kafkaProducerUtil.sendSync("主题", "键，这里可以为null", "值", (metadata, exception) -> {
@@ -34,7 +34,7 @@ public class TestProducer {
 
     @Test
     void 异步发送消息() {
-        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.INSTANCE
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         Future<RecordMetadata> recordMetadataFuture = kafkaProducerUtil.sendAsync("主题", "键，这里可以为null", "值");
@@ -50,7 +50,7 @@ public class TestProducer {
 
     @Test
     void 异步发送消息并且自己处理metadata和exception() {
-        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.INSTANCE
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         Future<RecordMetadata> recordMetadataFuture = kafkaProducerUtil.sendAsync("主题", "键，这里可以为null", "值", (metadata, exception) -> {
@@ -68,7 +68,7 @@ public class TestProducer {
 
     @Test
     void 批量发送消息() {
-        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.INSTANCE
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         for (int i = 0; i < 10000; i++) {
@@ -79,7 +79,7 @@ public class TestProducer {
 
     @Test
     void 关闭整个项目() {
-        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.INSTANCE
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         //这里发送消息

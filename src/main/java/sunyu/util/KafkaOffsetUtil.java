@@ -22,6 +22,37 @@ import java.util.*;
 public enum KafkaOffsetUtil implements Serializable, Closeable {
     INSTANCE;
     private Log log = LogFactory.get();
+
+    /**
+     * 获取工具类工厂
+     *
+     * @return
+     */
+    public static KafkaOffsetUtil builder() {
+        return INSTANCE;
+    }
+
+    /**
+     * 构建工具类
+     *
+     * @return
+     */
+    public KafkaOffsetUtil build() {
+        //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
+        //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+        //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        return INSTANCE;
+    }
+
+    @Override
+    public void close() {
+    }
+
+
     private Properties config = new Properties();
 
     /**
@@ -46,21 +77,6 @@ public enum KafkaOffsetUtil implements Serializable, Closeable {
         return INSTANCE;
     }
 
-    /**
-     * 构建工具类
-     *
-     * @return
-     */
-    public KafkaOffsetUtil build() {
-        //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
-        //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
-        //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
-        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        return INSTANCE;
-    }
 
     /**
      * 调整偏移量
@@ -152,7 +168,4 @@ public enum KafkaOffsetUtil implements Serializable, Closeable {
         consumer.close();
     }
 
-    @Override
-    public void close() {
-    }
 }

@@ -19,6 +19,49 @@ import java.util.*;
 public enum KafkaConsumerUtil implements Serializable, Closeable {
     INSTANCE;
     private Log log = LogFactory.get();
+
+    /**
+     * 获取工具类工厂
+     *
+     * @return
+     */
+    public static KafkaConsumerUtil builder() {
+        return INSTANCE;
+    }
+
+    /**
+     * 构建工具类
+     *
+     * @return
+     */
+    public KafkaConsumerUtil build() {
+        //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
+        //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+        //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        consumer = new KafkaConsumer<>(config);
+        consumer.subscribe(topics);
+        return INSTANCE;
+    }
+
+    /**
+     * 停止消费，释放资源
+     *
+     * @throws IOException
+     */
+    @Override
+    public void close() {
+        keepConsuming = false;
+        try {
+            consumer.close();
+        } catch (Exception e) {
+            log.warn("关闭consumer出现异常 {}", e);
+        }
+    }
+
     private boolean keepConsuming = true;
     private Properties config = new Properties();
     private Consumer<String, String> consumer;
@@ -76,23 +119,6 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
         return INSTANCE;
     }
 
-    /**
-     * 构建工具类
-     *
-     * @return
-     */
-    public KafkaConsumerUtil build() {
-        //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
-        //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
-        //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
-        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        consumer = new KafkaConsumer<>(config);
-        consumer.subscribe(topics);
-        return INSTANCE;
-    }
 
     /**
      * 持续消费，一条条处理，如果不抛异常，则会自动提交offset
@@ -143,18 +169,5 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
         }
     }
 
-    /**
-     * 停止消费，释放资源
-     *
-     * @throws IOException
-     */
-    @Override
-    public void close() {
-        keepConsuming = false;
-        try {
-            consumer.close();
-        } catch (Exception e) {
-            log.warn("关闭consumer出现异常 {}", e);
-        }
-    }
+
 }

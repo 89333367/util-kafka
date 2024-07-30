@@ -6,7 +6,7 @@ import sunyu.util.KafkaOffsetUtil;
 public class TestOffset {
     @Test
     void t001() {
-        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.INSTANCE
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .setGroupId("test_group_kafka_consumer_util")
                 .build();
@@ -17,7 +17,7 @@ public class TestOffset {
 
     @Test
     void t002() {
-        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.INSTANCE
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .setGroupId("test_group_kafka_consumer_util")
                 .build();
@@ -27,7 +27,7 @@ public class TestOffset {
 
     @Test
     void t003() {
-        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.INSTANCE
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .setGroupId("test_group_kafka_consumer_util")
                 .build();
@@ -37,7 +37,7 @@ public class TestOffset {
 
     @Test
     void t004() {
-        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.INSTANCE
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .setGroupId("test_group_kafka_consumer_util")
                 .build();
@@ -47,7 +47,7 @@ public class TestOffset {
 
     @Test
     void t005() {
-        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.INSTANCE
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .setGroupId("test_group_kafka_consumer_util")
                 .build();

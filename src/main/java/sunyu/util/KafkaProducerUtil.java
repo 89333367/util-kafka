@@ -21,21 +21,13 @@ import java.util.concurrent.Future;
 public enum KafkaProducerUtil implements Serializable, Closeable {
     INSTANCE;
     private Log log = LogFactory.get();
-    private Properties config = new Properties();
-    private Producer<String, String> producer;
-
-    public interface ProducerCallback {
-        void exec(RecordMetadata metadata, Exception exception);
-    }
 
     /**
-     * 设置kafka地址
+     * 获取工具类工厂
      *
-     * @param bootstrapServers kafka地址，多个地址使用英文半角逗号分割(cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092)
      * @return
      */
-    public KafkaProducerUtil setBootstrapServers(String bootstrapServers) {
-        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    public static KafkaProducerUtil builder() {
         return INSTANCE;
     }
 
@@ -99,6 +91,43 @@ public enum KafkaProducerUtil implements Serializable, Closeable {
          */
         //producerConfig.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
         producer = new KafkaProducer<>(config);
+        return INSTANCE;
+    }
+
+    /**
+     * 释放资源
+     *
+     * @throws IOException
+     */
+    @Override
+    public void close() {
+        try {
+            producer.flush();
+        } catch (Exception e) {
+            log.error(e);
+        }
+        try {
+            producer.close();
+        } catch (Exception e) {
+            log.error(e);
+        }
+    }
+
+    private Properties config = new Properties();
+    private Producer<String, String> producer;
+
+    public interface ProducerCallback {
+        void exec(RecordMetadata metadata, Exception exception);
+    }
+
+    /**
+     * 设置kafka地址
+     *
+     * @param bootstrapServers kafka地址，多个地址使用英文半角逗号分割(cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092)
+     * @return
+     */
+    public KafkaProducerUtil setBootstrapServers(String bootstrapServers) {
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         return INSTANCE;
     }
 
@@ -178,22 +207,4 @@ public enum KafkaProducerUtil implements Serializable, Closeable {
         producer.flush();
     }
 
-    /**
-     * 释放资源
-     *
-     * @throws IOException
-     */
-    @Override
-    public void close() {
-        try {
-            producer.flush();
-        } catch (Exception e) {
-            log.error(e);
-        }
-        try {
-            producer.close();
-        } catch (Exception e) {
-            log.error(e);
-        }
-    }
 }
