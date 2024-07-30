@@ -24,6 +24,9 @@ public enum KafkaProducerUtil implements Serializable, Closeable {
     private Properties config = new Properties();
     private Producer<String, String> producer;
 
+    public interface ProducerCallback {
+        void exec(RecordMetadata metadata, Exception exception);
+    }
 
     /**
      * 设置kafka地址

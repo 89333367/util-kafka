@@ -24,6 +24,14 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     private Consumer<String, String> consumer;
     private List<String> topics;
 
+    public interface ConsumerRecordCallback {
+        void exec(ConsumerRecord<String, String> record);
+    }
+
+    public interface ConsumerRecordsCallback {
+        void exec(ConsumerRecords<String, String> records);
+    }
+
     /**
      * 设置kafka地址
      *
