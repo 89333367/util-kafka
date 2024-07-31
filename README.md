@@ -1,19 +1,31 @@
 # kafka工具类
 
-> 适用于 kafka 0.9.x - kafka 1.x
-> 
-> 适用于 jdk8+
+## 描述
 
-> 引入依赖
+* KafkaConsumerUtil 消费者工具类
+* KafkaProducerUtil 生产者工具类
+* KafkaOffsetUtil 偏移量工具类
+
+## 环境
+
+* 适用于 kafka 0.9.x - kafka 1.x
+* 适用于 jdk8 x64 及以上版本
+
+## 引入依赖
+
 ```xml
+
 <dependency>
     <groupId>sunyu.util</groupId>
     <artifactId>util-kafka</artifactId>
     <version>kafka-clients-0.9.0.1_v1.0</version>
 </dependency>
 ```
+
 ## kafka消费者
+
 ```java
+
 @Test
 void t001() {
     KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
@@ -52,9 +64,10 @@ void t002() {
 }
 ```
 
-
 ## kafka生产者
+
 ```java
+
 @Test
 void 同步发送消息() {
     KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
@@ -132,9 +145,10 @@ void 关闭整个项目() {
 }
 ```
 
-
 ### kafka偏移量使用
+
 ```java
+
 @Test
 void t001() {
     KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
