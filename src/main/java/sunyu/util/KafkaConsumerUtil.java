@@ -68,11 +68,11 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     private List<String> topics;
 
     public interface ConsumerRecordCallback {
-        void exec(ConsumerRecord<String, String> record);
+        void exec(ConsumerRecord<String, String> record) throws Exception;
     }
 
     public interface ConsumerRecordsCallback {
-        void exec(ConsumerRecords<String, String> records);
+        void exec(ConsumerRecords<String, String> records) throws Exception;
     }
 
     /**
@@ -141,6 +141,8 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                     }
                 } catch (Exception e) {
                     log.error("处理消息出现异常 {} {}", record, e);
+                    // 如果消息处理异常，使用seek方法回退到当前消息，重新处理
+                    consumer.seek(new TopicPartition(record.topic(), record.partition()), record.offset());
                     break;//如果当前条消息处理异常了，后面就不要再处理了，跳出循环
                 }
             }
