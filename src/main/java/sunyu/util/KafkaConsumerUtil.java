@@ -136,12 +136,12 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                     try {
                         consumer.commitSync(offsets);//提交偏移量
                     } catch (Exception e) {
-                        log.warn("提交offsets出现异常 {}", offsets);
+                        log.warn("提交offsets出现异常 {} {}", offsets, e.getMessage());
                         break;//提交offset失败，跳出循环，重新获取消息
                     }
                 } catch (Exception e) {
-                    log.error("处理消息出现异常 {} {}", record, e);
-                    // 如果消息处理异常，使用seek方法回退到当前消息，重新处理
+                    log.error("处理消息出现异常，此条消息没有提交offset {} {}", record, e.getMessage());
+                    // 如果消息处理异常，使用seek方法回退到当前消息，重新处理，避免丢失数据
                     consumer.seek(new TopicPartition(record.topic(), record.partition()), record.offset());
                     break;//如果当前条消息处理异常了，后面就不要再处理了，跳出循环
                 }
@@ -150,7 +150,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     }
 
     /**
-     * 持续消费，一批批处理，如果不抛异常，则会自动提交这一批的offset
+     * 持续消费，一批批处理，如果这批消息处理抛出异常，则这批消息有可能会丢失
      *
      * @param pollTime 拉取消息等待时间(建议设置100毫秒)
      * @param callback 回调处理这一批消息

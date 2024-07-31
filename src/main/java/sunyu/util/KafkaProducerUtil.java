@@ -117,7 +117,7 @@ public enum KafkaProducerUtil implements Serializable, Closeable {
     private Producer<String, String> producer;
 
     public interface ProducerCallback {
-        void exec(RecordMetadata metadata, Exception exception);
+        void exec(RecordMetadata metadata, Exception exception) throws Exception;
     }
 
     /**
@@ -156,7 +156,13 @@ public enum KafkaProducerUtil implements Serializable, Closeable {
      */
     public Future<RecordMetadata> sendAsync(String topic, String key, String value, ProducerCallback callback) {
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
-        return producer.send(record, (metadata, exception) -> callback.exec(metadata, exception));
+        return producer.send(record, (metadata, exception) -> {
+            try {
+                callback.exec(metadata, exception);
+            } catch (Exception e) {
+                log.error(e);
+            }
+        });
     }
 
     /**
@@ -190,7 +196,13 @@ public enum KafkaProducerUtil implements Serializable, Closeable {
     public void sendSync(String topic, String key, String value, ProducerCallback callback) {
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
         try {
-            producer.send(record, (metadata, exception) -> callback.exec(metadata, exception)).get();
+            producer.send(record, (metadata, exception) -> {
+                try {
+                    callback.exec(metadata, exception);
+                } catch (Exception e) {
+                    log.error(e);
+                }
+            }).get();
         } catch (InterruptedException e) {
             log.error(e);
         } catch (ExecutionException e) {
