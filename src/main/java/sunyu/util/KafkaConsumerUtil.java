@@ -121,7 +121,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
 
 
     /**
-     * 持续消费，一条条处理，如果不抛异常，则会自动提交offset
+     * 持续消费，一条条处理，如果回调方法抛出异常，则不会提交offset，出现异常那条消息会重新消费
      *
      * @param callback 回调处理一条消息
      */
@@ -150,13 +150,18 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     }
 
     /**
-     * 持续消费，一批批处理，如果这批消息处理抛出异常，则这批消息有可能会丢失
+     * 持续消费，一批批处理，如果回调方法抛出异常，则不会提交offset，这批消息会重新消费
      *
      * @param pollTime 拉取消息等待时间(建议设置100毫秒)
      * @param callback 回调处理这一批消息
      */
     public void pollRecords(long pollTime, ConsumerRecordsCallback callback) {
         while (keepConsuming) {
+            // 记录当前偏移量
+            Map<TopicPartition, Long> offsets = new HashMap<>();
+            for (TopicPartition partition : consumer.assignment()) {
+                offsets.put(partition, consumer.position(partition));
+            }
             ConsumerRecords<String, String> records = consumer.poll(pollTime);
             try {
                 callback.exec(records);
@@ -166,10 +171,13 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                     log.warn("提交offsets出现异常");
                 }
             } catch (Exception e) {
-                log.error("这批消息处理失败 {}", e);
+                log.error("这批消息处理失败 {}", e.getMessage());
+                // seek回到poll之前的offset，避免消息丢失
+                for (Map.Entry<TopicPartition, Long> entry : offsets.entrySet()) {
+                    consumer.seek(entry.getKey(), entry.getValue());
+                }
             }
         }
     }
-
 
 }
