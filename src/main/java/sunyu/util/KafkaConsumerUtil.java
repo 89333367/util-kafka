@@ -1,5 +1,6 @@
 package sunyu.util;
 
+import cn.hutool.core.map.MapUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import org.apache.kafka.clients.consumer.*;
@@ -43,7 +44,30 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         consumer = new KafkaConsumer<>(config);
-        consumer.subscribe(topics);
+        consumer.subscribe(topics, new ConsumerRebalanceListener() {
+            @Override
+            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                //在消费者重新平衡开始时调用，这个方法在分区被撤销之前调用。你可以在这里提交偏移量或者执行其他清理工作。
+            }
+
+            @Override
+            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                //在消费者重新平衡完成后调用，这个方法在新分配的分区被分配给消费者之后调用。你可以在这里初始化资源或重置状态。
+                if (MapUtil.isNotEmpty(offsets)) {//如果offsets不为空，则有需要提交的offset
+                    log.debug("重平衡后提交未成功提交的offsets");
+                    try {
+                        consumer.poll(0);//先拉取一下才能commit
+                        for (Map.Entry<TopicPartition, OffsetAndMetadata> topicPartitionOffsetAndMetadata : offsets.entrySet()) {
+                            consumer.seek(topicPartitionOffsetAndMetadata.getKey(), topicPartitionOffsetAndMetadata.getValue().offset());
+                        }
+                        consumer.commitSync(offsets);
+                    } catch (Exception e) {
+                        log.error("重平衡后提交offsets出现异常 {}", e.getMessage());
+                    }
+                    offsets.clear();
+                }
+            }
+        });
         return INSTANCE;
     }
 
@@ -66,6 +90,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     private Properties config = new Properties();
     private Consumer<String, String> consumer;
     private List<String> topics;
+    private volatile Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
 
     public interface ConsumerRecordCallback {
         void exec(ConsumerRecord<String, String> record) throws Exception;
@@ -131,16 +156,16 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             for (ConsumerRecord<String, String> record : records) {
                 try {
                     callback.exec(record);//回调，由调用方处理消息，这里如果处理时间过长，下面提交offset可能会失败
-                    Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-                    offsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1));//记录消息偏移量+1
                     try {
-                        consumer.commitSync(offsets);//提交偏移量
+                        offsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1));//记录消息偏移量+1
+                        consumer.commitSync(offsets);
+                        offsets.clear();
                     } catch (Exception e) {
-                        log.warn("提交offsets出现异常 {} {}", offsets, e.getMessage());
-                        break;//提交offset失败，跳出循环，重新获取消息
+                        log.warn("提交offset失败，但消息处理成功 {}", e.getMessage());
+                        break;
                     }
                 } catch (Exception e) {
-                    log.error("处理消息出现异常，此条消息没有提交offset {} {}", record, e.getMessage());
+                    log.error("此条消息处理出现异常 {} {}", record, e.getMessage());
                     // 如果消息处理异常，使用seek方法回退到当前消息，重新处理，避免丢失数据
                     consumer.seek(new TopicPartition(record.topic(), record.partition()), record.offset());
                     break;//如果当前条消息处理异常了，后面就不要再处理了，跳出循环
@@ -165,13 +190,9 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             ConsumerRecords<String, String> records = consumer.poll(pollTime);
             try {
                 callback.exec(records);
-                try {
-                    consumer.commitSync();
-                } catch (Exception e) {
-                    log.warn("提交offsets出现异常");
-                }
+                consumer.commitAsync();
             } catch (Exception e) {
-                log.error("这批消息处理失败 {}", e.getMessage());
+                log.error("这批消息处理出现异常 {}", e.getMessage());
                 // seek回到poll之前的offset，避免消息丢失
                 for (Map.Entry<TopicPartition, Long> entry : offsets.entrySet()) {
                     consumer.seek(entry.getKey(), entry.getValue());

@@ -48,4 +48,19 @@ public class TestConsumer {
             }
         });
     }
+
+
+    @Test
+    void t004() {
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
+                .setTopics("US_GENERAL")
+                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .setGroupId("test_group_20240625")
+                .build();
+        kafkaConsumerUtil.pollRecord(consumerRecord -> {
+            log.info("开始处理 {}", consumerRecord);
+            ThreadUtil.sleep(1000 * 30);
+            log.info("处理完毕 {}", consumerRecord);
+        });
+    }
 }
