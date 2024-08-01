@@ -130,7 +130,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             ConsumerRecords<String, String> records = consumer.poll(100);
             for (ConsumerRecord<String, String> record : records) {
                 try {
-                    callback.exec(record);//回调，由调用方处理消息
+                    callback.exec(record);//回调，由调用方处理消息，这里如果处理时间过长，下面提交offset可能会失败
                     Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
                     offsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1));//记录消息偏移量+1
                     try {
