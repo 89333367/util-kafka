@@ -74,9 +74,23 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             CronUtil.setMatchSecond(true);
             CronUtil.start();
         }
-        //每秒钟都提交一次，避免超时导致重平衡
         CronUtil.schedule("kafkaConsumerSubmitSchedule", "0/1 * * * * ? ", (Task) () -> {
-            submitOffsets();
+            try {
+                lock.lock();
+                consumer.commitAsync(waitCommitOffsets, (offsets, exception) -> {
+                    if (exception != null) {
+                        if (exception instanceof ConcurrentModificationException) {
+                            log.warn("忽略ConcurrentModificationException异常");
+                            commitOffsetsError = false;
+                        } else {
+                            commitOffsetsError = true;
+                            waitCommitOffsets.clear();
+                        }
+                    }
+                });
+            } finally {
+                lock.unlock();
+            }
         });
 
         return INSTANCE;
@@ -121,26 +135,6 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
         void exec(ConsumerRecords<String, String> records) throws Exception;
     }
 
-
-    /**
-     * 提交offsets
-     */
-    synchronized private void submitOffsets() {
-        try {
-            lock.lock();
-            consumer.commitSync(waitCommitOffsets);
-            commitOffsetsError = false;
-        } catch (ConcurrentModificationException e) {
-            log.warn("忽略ConcurrentModificationException异常");
-            commitOffsetsError = false;
-        } catch (Exception e) {
-            log.warn("提交offset出现异常 {} {}", waitCommitOffsets, e.getMessage());
-            commitOffsetsError = true;
-            waitCommitOffsets.clear();
-        } finally {
-            lock.unlock();
-        }
-    }
 
     /**
      * 将偏移量修改到最后提交的offset
