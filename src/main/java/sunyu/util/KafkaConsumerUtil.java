@@ -134,15 +134,34 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
      * @param topicPartition
      */
     private void seekToCommitted(TopicPartition topicPartition) {
-        OffsetAndMetadata offsetAndMetadata = consumer.committed(topicPartition);//当前组已提交的offset
-        if (offsetAndMetadata != null) {
-            log.debug("seek 当前组的偏移量 {} {}", topicPartition, offsetAndMetadata);
-            consumer.seek(topicPartition, offsetAndMetadata.offset());
-        } else {
-            // 如果没有提交的偏移量，则可以选择从头开始或从末尾开始
-            log.debug("seek 当前组的偏移量 {} {}", topicPartition, 0);
-            consumer.seek(topicPartition, 0); // 从头开始
-            // 或者 consumer.seek(topicPartition, consumer.endOffsets(topicPartition) + 1); // 从末尾开始
+        try {
+            lock.lock();
+            OffsetAndMetadata offsetAndMetadata = consumer.committed(topicPartition);//当前组已提交的offset
+            if (offsetAndMetadata != null) {
+                log.debug("seek 当前组的偏移量 {} {}", topicPartition, offsetAndMetadata);
+                consumer.seek(topicPartition, offsetAndMetadata.offset());
+            } else {
+                // 如果没有提交的偏移量，则可以选择从头开始或从末尾开始
+                log.debug("seek 当前组的偏移量 {} {}", topicPartition, 0);
+                consumer.seek(topicPartition, 0); // 从头开始
+                // 或者 consumer.seek(topicPartition, consumer.endOffsets(topicPartition) + 1); // 从末尾开始
+            }
+        } finally {
+            lock.unlock();
+        }
+    }
+
+    /**
+     * 将偏移量修改到最后提交的offset
+     */
+    private void seekToCommitted() {
+        try {
+            lock.lock();
+            for (TopicPartition topicPartition : consumer.assignment()) {
+                seekToCommitted(topicPartition);
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -201,35 +220,28 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             ConsumerRecords<String, String> records = consumer.poll(100);
             for (ConsumerRecord<String, String> record : records) {
                 TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
-
-                if (commitOffsetsError) {
-                    try {
-                        lock.lock();
-                        commitOffsetsError = false;
-                        seekToCommitted(topicPartition);
-                    } finally {
-                        lock.unlock();
-                    }
-                    break;
-                }
-
                 try {
                     lock.lock();
+                    if (commitOffsetsError) {//如果提交偏移量出错了，有可能是触发了再平衡，那么先seek到最后提交的offset，跳出循环，重新poll
+                        commitOffsetsError = false;
+                        seekToCommitted();
+                        break;
+                    }
+                    //如果提交偏移量没出错，将当前record的偏移量记住
                     waitCommitOffsets.clear();
                     waitCommitOffsets.put(topicPartition, new OffsetAndMetadata(record.offset()));//先记录当前record偏移量，使用定时任务不断地提交，避免超时
                 } finally {
                     lock.unlock();
                 }
-
                 try {
                     callback.exec(record);//回调，由调用方处理消息
+                    // todo 这里本应该提交新的偏移量，但是由于是循环，所以这里就省略了，再循环到下一条时就是最新的偏移量了
                 } catch (Exception e) {
                     log.error("此条消息处理出现异常 {} {}", record, e.getMessage());
-                    log.debug("seek 到record的offset，重新处理 {} {}", topicPartition, record);
                     try {
                         lock.lock();
+                        seekToCommitted();//seek，后面会跳出循环，然后重新poll
                         waitCommitOffsets.clear();
-                        seekToCommitted(topicPartition);
                     } finally {
                         lock.unlock();
                     }
@@ -247,20 +259,39 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
      */
     public void pollRecords(long pollTime, ConsumerRecordsCallback callback) {
         while (keepConsuming) {
-            // 记录当前偏移量
-            Map<TopicPartition, Long> topicPartitionOffsets = new HashMap<>();
-            for (TopicPartition partition : consumer.assignment()) {
-                topicPartitionOffsets.put(partition, consumer.position(partition));
-            }
             ConsumerRecords<String, String> records = consumer.poll(pollTime);
-            try {
-                callback.exec(records);
-                consumer.commitAsync();
-            } catch (Exception e) {
-                log.error("这批消息处理出现异常 {}", e.getMessage());
-                // seek回到poll之前的offset，避免消息丢失
-                for (Map.Entry<TopicPartition, Long> topicPartitionOffset : topicPartitionOffsets.entrySet()) {
-                    consumer.seek(topicPartitionOffset.getKey(), topicPartitionOffset.getValue());
+            if (records.count() > 0) {
+                try {
+                    lock.lock();
+                    if (commitOffsetsError) {//如果提交偏移量出错了，有可能是触发了再平衡，那么先seek到最后提交的offset，跳出循环，重新poll
+                        commitOffsetsError = false;
+                        seekToCommitted();
+                        continue;
+                    }
+                    //如果提交偏移量没出错，将当前records的偏移量记住
+                    waitCommitOffsets.clear();
+                    for (ConsumerRecord<String, String> record : records) {
+                        TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
+                        if (!waitCommitOffsets.containsKey(topicPartition)) {//只记录第一个
+                            OffsetAndMetadata offsetAndMetadata = new OffsetAndMetadata(record.offset());
+                            waitCommitOffsets.put(topicPartition, offsetAndMetadata);
+                        }
+                    }
+                } finally {
+                    lock.unlock();
+                }
+                try {
+                    callback.exec(records);
+                    // todo 这里本应该提交新的偏移量，但是由于是循环，所以这里就省略了，再循环到下一条时就是最新的偏移量了
+                } catch (Exception e) {
+                    log.error("这批消息处理出现异常 {}", e.getMessage());
+                    try {
+                        lock.lock();
+                        seekToCommitted();//seek，下次循环重新poll
+                        waitCommitOffsets.clear();
+                    } finally {
+                        lock.unlock();
+                    }
                 }
             }
         }
