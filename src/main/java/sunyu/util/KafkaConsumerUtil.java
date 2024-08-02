@@ -1,6 +1,5 @@
 package sunyu.util;
 
-import cn.hutool.core.map.MapUtil;
 import cn.hutool.cron.CronUtil;
 import cn.hutool.cron.task.Task;
 import cn.hutool.log.Log;
@@ -77,22 +76,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
         }
         //每秒钟都提交一次，避免超时导致重平衡
         CronUtil.schedule("kafkaConsumerSubmitSchedule", "0/1 * * * * ? ", (Task) () -> {
-            try {
-                lock.lock();
-                if (MapUtil.isNotEmpty(waitCommitOffsets)) {
-                    consumer.commitSync(waitCommitOffsets);
-                    commitOffsetsError = false;
-                }
-            } catch (ConcurrentModificationException e) {
-                log.warn("忽略ConcurrentModificationException异常");
-                commitOffsetsError = false;
-            } catch (Exception e) {
-                log.warn("提交offset出现异常 {} {}", waitCommitOffsets, e.getMessage());
-                commitOffsetsError = true;
-                waitCommitOffsets.clear();
-            } finally {
-                lock.unlock();
-            }
+            submitOffsets();
         });
 
         return INSTANCE;
@@ -135,6 +119,27 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
 
     public interface ConsumerRecordsCallback {
         void exec(ConsumerRecords<String, String> records) throws Exception;
+    }
+
+
+    /**
+     * 提交offsets
+     */
+    synchronized private void submitOffsets() {
+        try {
+            lock.lock();
+            consumer.commitSync(waitCommitOffsets);
+            commitOffsetsError = false;
+        } catch (ConcurrentModificationException e) {
+            log.warn("忽略ConcurrentModificationException异常");
+            commitOffsetsError = false;
+        } catch (Exception e) {
+            log.warn("提交offset出现异常 {} {}", waitCommitOffsets, e.getMessage());
+            commitOffsetsError = true;
+            waitCommitOffsets.clear();
+        } finally {
+            lock.unlock();
+        }
     }
 
     /**
