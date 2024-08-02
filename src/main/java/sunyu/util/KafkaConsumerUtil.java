@@ -13,6 +13,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -124,7 +125,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     private Properties config = new Properties();
     private Consumer<String, String> consumer;
     private List<String> topics;
-    private volatile Map<TopicPartition, OffsetAndMetadata> waitCommitOffsets = new HashMap<>();
+    private volatile Map<TopicPartition, OffsetAndMetadata> waitCommitOffsets = new ConcurrentHashMap<>();
     private volatile boolean commitOffsetsError = false;
     private ReentrantLock lock = new ReentrantLock();
 

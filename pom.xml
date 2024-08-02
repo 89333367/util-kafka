@@ -6,7 +6,7 @@
 
     <groupId>sunyu.util</groupId>
     <artifactId>util-kafka</artifactId>
-    <version>kafka-clients-0.9.0.1_v3.1</version>
+    <version>kafka-clients-0.9.0.1_v3.2</version>
 
     <properties>
         <java.version>1.8</java.version>
