@@ -60,11 +60,11 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 for (TopicPartition partition : partitions) {
                     OffsetAndMetadata offsetAndMetadata = consumer.committed(partition);//当前组已提交的offset
                     if (offsetAndMetadata != null) {
-                        log.debug("seek {} {}", partition, offsetAndMetadata);
+                        log.debug("seek 当前组的偏移量 {} {}", partition, offsetAndMetadata);
                         consumer.seek(partition, offsetAndMetadata.offset());
                     } else {
                         // 如果没有提交的偏移量，则可以选择从头开始或从末尾开始
-                        log.debug("seek {} {}", partition, 0);
+                        log.debug("seek 当前组的偏移量 {} {}", partition, 0);
                         consumer.seek(partition, 0); // 从头开始
                         // 或者 consumer.seek(partition, consumer.endOffsets(partition) + 1); // 从末尾开始
                     }
@@ -182,6 +182,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                     callback.exec(record);//回调，由调用方处理消息
                 } catch (Exception e) {
                     log.error("此条消息处理出现异常 {} {}", record, e.getMessage());
+                    consumer.seek(topicPartition, record.offset());//从处理异常的消息offset重新poll
                     break;
                 }
             }
