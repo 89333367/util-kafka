@@ -83,6 +83,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                     commitOffsetsError = false;
                 }
             } catch (ConcurrentModificationException e) {
+                log.warn("忽略ConcurrentModificationException异常");
                 commitOffsetsError = false;
             } catch (Exception e) {
                 log.warn("提交offset出现异常 {} {}", waitCommitOffsets, e.getMessage());
