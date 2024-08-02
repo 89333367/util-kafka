@@ -51,13 +51,13 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             @Override
             public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
                 //在消费者重新平衡开始时调用，这个方法在分区被撤销之前调用。你可以在这里提交偏移量或者执行其他清理工作。
-                log.info("当前消费者准备重平衡，共有 {} 个分区 {}", partitions.size(), partitions);
+                log.info("{} 触发重平衡", config.get(ConsumerConfig.GROUP_ID_CONFIG));
             }
 
             @Override
             public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
                 //在消费者重新平衡完成后调用，这个方法在新分配的分区被分配给消费者之后调用。你可以在这里初始化资源或重置状态。
-                log.info("当前消费者重平衡完毕，拿到了 {} 个分区 {}", partitions.size(), partitions);
+                log.info("{} 重平衡完毕，拿到了 {} 个分区 {}", config.get(ConsumerConfig.GROUP_ID_CONFIG), partitions.size(), partitions);
                 try {
                     lock.lock();
                     for (TopicPartition topicPartition : partitions) {
@@ -235,7 +235,16 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 }
                 try {
                     callback.exec(record);//回调，由调用方处理消息
-                    // todo 这里本应该提交新的偏移量，但是由于是循环，所以这里就省略了，再循环到下一条时就是最新的偏移量了
+                    try {
+                        lock.lock();
+                        if (commitOffsetsError) {//如果提交偏移量出错了，有可能是触发了再平衡，那么先seek到最后提交的offset，跳出循环，重新poll
+                            commitOffsetsError = false;
+                            seekToCommitted();
+                            break;
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
                 } catch (Exception e) {
                     log.error("此条消息处理出现异常 {} {}", record, e.getMessage());
                     try {
@@ -282,7 +291,6 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 }
                 try {
                     callback.exec(records);
-                    // todo 这里本应该提交新的偏移量，但是由于是循环，所以这里就省略了，再循环到下一条时就是最新的偏移量了
                 } catch (Exception e) {
                     log.error("这批消息处理出现异常 {}", e.getMessage());
                     try {
