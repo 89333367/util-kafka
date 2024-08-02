@@ -82,6 +82,8 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                     consumer.commitSync(waitCommitOffsets);
                     commitOffsetsError = false;
                 }
+            } catch (ConcurrentModificationException e) {
+                commitOffsetsError = false;
             } catch (Exception e) {
                 log.warn("提交offset出现异常 {} {}", waitCommitOffsets, e.getMessage());
                 commitOffsetsError = true;
