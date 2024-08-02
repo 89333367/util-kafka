@@ -13,6 +13,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * kafka消费者工具类
@@ -95,6 +96,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     private List<String> topics;
     private volatile Map<TopicPartition, OffsetAndMetadata> waitCommitOffsets = new HashMap<>();
     private volatile boolean commitOffsetsStatus = true;
+    private ReentrantLock lock = new ReentrantLock();
 
     public interface ConsumerRecordCallback {
         void exec(ConsumerRecord<String, String> record) throws Exception;
@@ -157,6 +159,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     public void pollRecord(ConsumerRecordCallback callback) {
         CronUtil.schedule("0/1 * * * * ? ", (Task) () -> {
             try {
+                lock.lock();
                 if (MapUtil.isNotEmpty(waitCommitOffsets)) {
                     consumer.commitSync(waitCommitOffsets);
                     commitOffsetsStatus = true;
@@ -165,6 +168,8 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 log.warn("提交offset出现异常 {} {}", waitCommitOffsets, e.getMessage());
                 commitOffsetsStatus = false;
                 waitCommitOffsets.clear();
+            } finally {
+                lock.unlock();
             }
         });
         CronUtil.setMatchSecond(true);//开启秒级别定时任务
@@ -177,7 +182,13 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                     break;
                 }
                 TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
-                waitCommitOffsets.put(topicPartition, new OffsetAndMetadata(record.offset()));
+                try {
+                    lock.lock();
+                    waitCommitOffsets.clear();
+                    waitCommitOffsets.put(topicPartition, new OffsetAndMetadata(record.offset()));
+                } finally {
+                    lock.unlock();
+                }
                 try {
                     callback.exec(record);//回调，由调用方处理消息
                 } catch (Exception e) {
