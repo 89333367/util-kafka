@@ -38,23 +38,23 @@ public class Tests {
 
     @Test
     void t003() {
+        if (!CronUtil.getScheduler().isStarted()) {
+            CronUtil.setMatchSecond(true);
+            CronUtil.start();
+        }
+
         CronUtil.schedule("0/1 * * * * ? ", (Task) () -> {
             log.info("1执行啦");
         });
-        CronUtil.setMatchSecond(true);//开启秒级别定时任务
-        CronUtil.start();
+
+
         if (!CronUtil.getScheduler().isStarted()) {
+            CronUtil.setMatchSecond(true);
             CronUtil.start();
         }
-
-
         CronUtil.schedule("0/5 * * * * ? ", (Task) () -> {
             log.info("5执行啦");
         });
-        CronUtil.setMatchSecond(true);//开启秒级别定时任务
-        if (!CronUtil.getScheduler().isStarted()) {
-            CronUtil.start();
-        }
 
         ThreadUtil.sleep(1000000);
     }

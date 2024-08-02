@@ -69,6 +69,11 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             }
         });
 
+
+        if (!CronUtil.getScheduler().isStarted()) {
+            CronUtil.setMatchSecond(true);
+            CronUtil.start();
+        }
         //每秒钟都提交一次，避免超时导致重平衡
         CronUtil.schedule("kafkaConsumerSubmitSchedule", "0/1 * * * * ? ", (Task) () -> {
             try {
@@ -85,10 +90,6 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 lock.unlock();
             }
         });
-        CronUtil.setMatchSecond(true);//开启秒级别定时任务
-        if (!CronUtil.getScheduler().isStarted()) {
-            CronUtil.start();
-        }
 
         return INSTANCE;
     }
