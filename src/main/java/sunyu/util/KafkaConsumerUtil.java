@@ -51,13 +51,13 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             @Override
             public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
                 //在消费者重新平衡开始时调用，这个方法在分区被撤销之前调用。你可以在这里提交偏移量或者执行其他清理工作。
-                log.info("当前消费者准备重平衡 {}", partitions);
+                log.info("当前消费者准备重平衡，共有 {} 个分区 {}", partitions.size(), partitions);
             }
 
             @Override
             public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
                 //在消费者重新平衡完成后调用，这个方法在新分配的分区被分配给消费者之后调用。你可以在这里初始化资源或重置状态。
-                log.info("当前消费者重平衡完毕 {}", partitions);
+                log.info("当前消费者重平衡完毕，拿到了 {} 个分区 {}", partitions.size(), partitions);
                 try {
                     lock.lock();
                     for (TopicPartition topicPartition : partitions) {
@@ -138,11 +138,11 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             lock.lock();
             OffsetAndMetadata offsetAndMetadata = consumer.committed(topicPartition);//当前组已提交的offset
             if (offsetAndMetadata != null) {
-                log.debug("seek 当前组的偏移量 {} {}", topicPartition, offsetAndMetadata);
+                //log.debug("seek 当前组的偏移量 {} {}", topicPartition, offsetAndMetadata);
                 consumer.seek(topicPartition, offsetAndMetadata.offset());
             } else {
                 // 如果没有提交的偏移量，则可以选择从头开始或从末尾开始
-                log.debug("seek 当前组的偏移量 {} {}", topicPartition, 0);
+                //log.debug("seek 当前组的偏移量 {} {}", topicPartition, 0);
                 consumer.seek(topicPartition, 0); // 从头开始
                 // 或者 consumer.seek(topicPartition, consumer.endOffsets(topicPartition) + 1); // 从末尾开始
             }
