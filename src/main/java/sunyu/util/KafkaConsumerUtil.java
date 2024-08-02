@@ -193,6 +193,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                     callback.exec(record);//回调，由调用方处理消息
                 } catch (Exception e) {
                     log.error("此条消息处理出现异常 {} {}", record, e.getMessage());
+                    log.debug("seek 到record的offset，重新处理 {} {}", topicPartition, record);
                     consumer.seek(topicPartition, record.offset());//从处理异常的消息offset重新poll
                     break;
                 }
