@@ -58,17 +58,22 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
                 //在消费者重新平衡完成后调用，这个方法在新分配的分区被分配给消费者之后调用。你可以在这里初始化资源或重置状态。
                 log.debug("当前消费者重平衡完毕 {}", partitions);
-                for (TopicPartition partition : partitions) {
-                    OffsetAndMetadata offsetAndMetadata = consumer.committed(partition);//当前组已提交的offset
-                    if (offsetAndMetadata != null) {
-                        log.debug("seek 当前组的偏移量 {} {}", partition, offsetAndMetadata);
-                        consumer.seek(partition, offsetAndMetadata.offset());
-                    } else {
-                        // 如果没有提交的偏移量，则可以选择从头开始或从末尾开始
-                        log.debug("seek 当前组的偏移量 {} {}", partition, 0);
-                        consumer.seek(partition, 0); // 从头开始
-                        // 或者 consumer.seek(partition, consumer.endOffsets(partition) + 1); // 从末尾开始
+                try {
+                    lock.lock();
+                    for (TopicPartition partition : partitions) {
+                        OffsetAndMetadata offsetAndMetadata = consumer.committed(partition);//当前组已提交的offset
+                        if (offsetAndMetadata != null) {
+                            log.debug("seek 当前组的偏移量 {} {}", partition, offsetAndMetadata);
+                            consumer.seek(partition, offsetAndMetadata.offset());
+                        } else {
+                            // 如果没有提交的偏移量，则可以选择从头开始或从末尾开始
+                            log.debug("seek 当前组的偏移量 {} {}", partition, 0);
+                            consumer.seek(partition, 0); // 从头开始
+                            // 或者 consumer.seek(partition, consumer.endOffsets(partition) + 1); // 从末尾开始
+                        }
                     }
+                } finally {
+                    lock.unlock();
                 }
             }
         });
@@ -185,7 +190,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 try {
                     lock.lock();
                     waitCommitOffsets.clear();
-                    waitCommitOffsets.put(topicPartition, new OffsetAndMetadata(record.offset()));
+                    waitCommitOffsets.put(topicPartition, new OffsetAndMetadata(record.offset()));//先记录当前record偏移量，使用定时任务不断地提交，避免超时
                 } finally {
                     lock.unlock();
                 }
@@ -194,7 +199,13 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 } catch (Exception e) {
                     log.error("此条消息处理出现异常 {} {}", record, e.getMessage());
                     log.debug("seek 到record的offset，重新处理 {} {}", topicPartition, record);
-                    consumer.seek(topicPartition, record.offset());//从处理异常的消息offset重新poll
+                    try {
+                        lock.lock();
+                        consumer.seek(topicPartition, record.offset());//从处理异常的消息offset重新poll
+                        waitCommitOffsets.clear();
+                    } finally {
+                        lock.unlock();
+                    }
                     break;
                 }
             }

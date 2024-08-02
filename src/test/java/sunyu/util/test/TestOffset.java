@@ -19,7 +19,7 @@ public class TestOffset {
     void t002() {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-                .setGroupId("test_group_kafka_consumer_util")
+                .setGroupId("test_group_20240625")
                 .build();
         //将某主题，某个分区的偏移量调整到最后
         kafkaOffsetUtil.seekToEnd("US_GENERAL", 0);
