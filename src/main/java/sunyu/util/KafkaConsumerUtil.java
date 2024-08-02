@@ -60,25 +60,37 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 log.debug("当前消费者重平衡完毕 {}", partitions);
                 try {
                     lock.lock();
-                    for (TopicPartition partition : partitions) {
-                        OffsetAndMetadata offsetAndMetadata = consumer.committed(partition);//当前组已提交的offset
-                        if (offsetAndMetadata != null) {
-                            log.debug("seek 当前组的偏移量 {} {}", partition, offsetAndMetadata);
-                            consumer.seek(partition, offsetAndMetadata.offset());
-                        } else {
-                            // 如果没有提交的偏移量，则可以选择从头开始或从末尾开始
-                            log.debug("seek 当前组的偏移量 {} {}", partition, 0);
-                            consumer.seek(partition, 0); // 从头开始
-                            // 或者 consumer.seek(partition, consumer.endOffsets(partition) + 1); // 从末尾开始
-                        }
+                    for (TopicPartition topicPartition : partitions) {
+                        seekToCommitted(topicPartition);
                     }
                 } finally {
                     lock.unlock();
                 }
             }
         });
+
+        //每秒钟都提交一次，避免超时导致重平衡
+        CronUtil.schedule("0/1 * * * * ? ", (Task) () -> {
+            try {
+                lock.lock();
+                if (MapUtil.isNotEmpty(waitCommitOffsets)) {
+                    consumer.commitSync(waitCommitOffsets);
+                    commitOffsetsError = false;
+                }
+            } catch (Exception e) {
+                log.warn("提交offset出现异常 {} {}", waitCommitOffsets, e.getMessage());
+                commitOffsetsError = true;
+                waitCommitOffsets.clear();
+            } finally {
+                lock.unlock();
+            }
+        });
+        CronUtil.setMatchSecond(true);//开启秒级别定时任务
+        CronUtil.start();
+
         return INSTANCE;
     }
+
 
     /**
      * 停止消费，释放资源
@@ -91,7 +103,12 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
         try {
             consumer.close();
         } catch (Exception e) {
-            log.warn("关闭consumer出现异常 {}", e);
+            log.warn("关闭consumer出现异常 {}", e.getMessage());
+        }
+        try {
+            CronUtil.stop();
+        } catch (Exception e) {
+            log.warn("关闭定时任务失败 {}", e.getMessage());
         }
     }
 
@@ -100,7 +117,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     private Consumer<String, String> consumer;
     private List<String> topics;
     private volatile Map<TopicPartition, OffsetAndMetadata> waitCommitOffsets = new HashMap<>();
-    private volatile boolean commitOffsetsStatus = true;
+    private volatile boolean commitOffsetsError = false;
     private ReentrantLock lock = new ReentrantLock();
 
     public interface ConsumerRecordCallback {
@@ -109,6 +126,24 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
 
     public interface ConsumerRecordsCallback {
         void exec(ConsumerRecords<String, String> records) throws Exception;
+    }
+
+    /**
+     * 将偏移量修改到最后提交的offset
+     *
+     * @param topicPartition
+     */
+    private void seekToCommitted(TopicPartition topicPartition) {
+        OffsetAndMetadata offsetAndMetadata = consumer.committed(topicPartition);//当前组已提交的offset
+        if (offsetAndMetadata != null) {
+            log.debug("seek 当前组的偏移量 {} {}", topicPartition, offsetAndMetadata);
+            consumer.seek(topicPartition, offsetAndMetadata.offset());
+        } else {
+            // 如果没有提交的偏移量，则可以选择从头开始或从末尾开始
+            log.debug("seek 当前组的偏移量 {} {}", topicPartition, 0);
+            consumer.seek(topicPartition, 0); // 从头开始
+            // 或者 consumer.seek(topicPartition, consumer.endOffsets(topicPartition) + 1); // 从末尾开始
+        }
     }
 
     /**
@@ -162,31 +197,22 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
      * @param callback 回调处理一条消息
      */
     public void pollRecord(ConsumerRecordCallback callback) {
-        CronUtil.schedule("0/1 * * * * ? ", (Task) () -> {
-            try {
-                lock.lock();
-                if (MapUtil.isNotEmpty(waitCommitOffsets)) {
-                    consumer.commitSync(waitCommitOffsets);
-                    commitOffsetsStatus = true;
-                }
-            } catch (Exception e) {
-                log.warn("提交offset出现异常 {} {}", waitCommitOffsets, e.getMessage());
-                commitOffsetsStatus = false;
-                waitCommitOffsets.clear();
-            } finally {
-                lock.unlock();
-            }
-        });
-        CronUtil.setMatchSecond(true);//开启秒级别定时任务
-        CronUtil.start();
         while (keepConsuming) {
             ConsumerRecords<String, String> records = consumer.poll(100);
             for (ConsumerRecord<String, String> record : records) {
-                if (commitOffsetsStatus == false) {
-                    commitOffsetsStatus = true;
+                TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
+
+                if (commitOffsetsError) {
+                    try {
+                        lock.lock();
+                        commitOffsetsError = false;
+                        seekToCommitted(topicPartition);
+                    } finally {
+                        lock.unlock();
+                    }
                     break;
                 }
-                TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
+
                 try {
                     lock.lock();
                     waitCommitOffsets.clear();
@@ -194,6 +220,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 } finally {
                     lock.unlock();
                 }
+
                 try {
                     callback.exec(record);//回调，由调用方处理消息
                 } catch (Exception e) {
@@ -201,8 +228,8 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                     log.debug("seek 到record的offset，重新处理 {} {}", topicPartition, record);
                     try {
                         lock.lock();
-                        consumer.seek(topicPartition, record.offset());//从处理异常的消息offset重新poll
                         waitCommitOffsets.clear();
+                        seekToCommitted(topicPartition);
                     } finally {
                         lock.unlock();
                     }
@@ -210,7 +237,6 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 }
             }
         }
-        CronUtil.stop();
     }
 
     /**
