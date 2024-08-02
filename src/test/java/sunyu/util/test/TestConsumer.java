@@ -53,7 +53,7 @@ public class TestConsumer {
     @Test
     void t004() {
         KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
-                .setTopics("US_GENERAL")
+                .setTopic("US_GENERAL")
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .setGroupId("test_group_20240625")
                 .build();

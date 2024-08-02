@@ -1,6 +1,8 @@
 package sunyu.util;
 
 import cn.hutool.core.map.MapUtil;
+import cn.hutool.cron.CronUtil;
+import cn.hutool.cron.task.Task;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import org.apache.kafka.clients.consumer.*;
@@ -11,6 +13,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * kafka消费者工具类
@@ -48,23 +52,18 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             @Override
             public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
                 //在消费者重新平衡开始时调用，这个方法在分区被撤销之前调用。你可以在这里提交偏移量或者执行其他清理工作。
+                log.debug("当前消费者准备重平衡");
+                for (TopicPartition partition : partitions) {
+                    log.debug("{}", partition);
+                }
             }
 
             @Override
             public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
                 //在消费者重新平衡完成后调用，这个方法在新分配的分区被分配给消费者之后调用。你可以在这里初始化资源或重置状态。
-                if (MapUtil.isNotEmpty(offsets)) {//如果offsets不为空，则有需要提交的offset
-                    log.debug("重平衡后提交未成功提交的offsets");
-                    try {
-                        consumer.poll(0);//先拉取一下才能commit
-                        for (Map.Entry<TopicPartition, OffsetAndMetadata> topicPartitionOffsetAndMetadata : offsets.entrySet()) {
-                            consumer.seek(topicPartitionOffsetAndMetadata.getKey(), topicPartitionOffsetAndMetadata.getValue().offset());
-                        }
-                        consumer.commitSync(offsets);
-                    } catch (Exception e) {
-                        log.error("重平衡后提交offsets出现异常 {}", e.getMessage());
-                    }
-                    offsets.clear();
+                log.debug("当前消费者重平衡完毕");
+                for (TopicPartition partition : partitions) {
+                    log.debug("{}", partition);
                 }
             }
         });
@@ -90,7 +89,8 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     private Properties config = new Properties();
     private Consumer<String, String> consumer;
     private List<String> topics;
-    private volatile Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+    private ReentrantLock lock = new ReentrantLock();
+    private AtomicReference<Map<TopicPartition, OffsetAndMetadata>> waitCommitOffsets = new AtomicReference<>(null);
 
     public interface ConsumerRecordCallback {
         void exec(ConsumerRecord<String, String> record) throws Exception;
@@ -139,7 +139,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
      * @param topic 主题
      * @return
      */
-    public KafkaConsumerUtil setTopics(String topic) {
+    public KafkaConsumerUtil setTopic(String topic) {
         topics = Arrays.asList(topic);
         return INSTANCE;
     }
@@ -151,27 +151,49 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
      * @param callback 回调处理一条消息
      */
     public void pollRecord(ConsumerRecordCallback callback) {
+        CronUtil.schedule("0/5 * * * * ? ", (Task) () -> {
+            try {
+                lock.lock();
+                Map<TopicPartition, OffsetAndMetadata> offsets = waitCommitOffsets.get();
+                if (MapUtil.isNotEmpty(offsets)) {
+                    consumer.commitSync(offsets);
+                }
+            } catch (Exception e) {
+                log.warn("提交offset出现异常 {}", e.getMessage());
+            } finally {
+                lock.unlock();
+            }
+        });
+        CronUtil.setMatchSecond(true);//开启秒级别定时任务
+        CronUtil.start();
         while (keepConsuming) {
-            ConsumerRecords<String, String> records = consumer.poll(100);
-            for (ConsumerRecord<String, String> record : records) {
+            ConsumerRecords<String, String> records = consumer.poll(50);
+            if (records.count() > 0) {
+                ConsumerRecord<String, String> record = records.iterator().next();//只要一条
+                Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+                TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
+                offsets.put(topicPartition, new OffsetAndMetadata(record.offset()));
+                waitCommitOffsets.set(offsets);//这里会通过定时任务不断的提交offsets，避免超时引起的重平衡
                 try {
-                    callback.exec(record);//回调，由调用方处理消息，这里如果处理时间过长，下面提交offset可能会失败
+                    consumer.seek(topicPartition, record.offset() + 1);//告诉poll下次从这个offset开始拉取
+                    callback.exec(record);//回调，由调用方处理消息
                     try {
-                        offsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1));//记录消息偏移量+1
-                        consumer.commitSync(offsets);
-                        offsets.clear();
+                        lock.lock();
+                        offsets.put(topicPartition, new OffsetAndMetadata(record.offset() + 1));//记录消息偏移量+1
+                        waitCommitOffsets.set(offsets);
+                        consumer.commitSync(offsets);//提交offset
                     } catch (Exception e) {
-                        log.warn("提交offset失败，但消息处理成功 {}", e.getMessage());
-                        break;
+                        log.warn("提交offset出现异常 {}", e.getMessage());
+                    } finally {
+                        lock.unlock();
                     }
                 } catch (Exception e) {
                     log.error("此条消息处理出现异常 {} {}", record, e.getMessage());
-                    // 如果消息处理异常，使用seek方法回退到当前消息，重新处理，避免丢失数据
-                    consumer.seek(new TopicPartition(record.topic(), record.partition()), record.offset());
-                    break;//如果当前条消息处理异常了，后面就不要再处理了，跳出循环
+                    consumer.seek(topicPartition, record.offset());//处理异常了，要seek回去，重新poll消费
                 }
             }
         }
+        CronUtil.stop();
     }
 
     /**
@@ -183,9 +205,9 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
     public void pollRecords(long pollTime, ConsumerRecordsCallback callback) {
         while (keepConsuming) {
             // 记录当前偏移量
-            Map<TopicPartition, Long> offsets = new HashMap<>();
+            Map<TopicPartition, Long> topicPartitionOffsets = new HashMap<>();
             for (TopicPartition partition : consumer.assignment()) {
-                offsets.put(partition, consumer.position(partition));
+                topicPartitionOffsets.put(partition, consumer.position(partition));
             }
             ConsumerRecords<String, String> records = consumer.poll(pollTime);
             try {
@@ -194,8 +216,8 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             } catch (Exception e) {
                 log.error("这批消息处理出现异常 {}", e.getMessage());
                 // seek回到poll之前的offset，避免消息丢失
-                for (Map.Entry<TopicPartition, Long> entry : offsets.entrySet()) {
-                    consumer.seek(entry.getKey(), entry.getValue());
+                for (Map.Entry<TopicPartition, Long> topicPartitionOffset : topicPartitionOffsets.entrySet()) {
+                    consumer.seek(topicPartitionOffset.getKey(), topicPartitionOffset.getValue());
                 }
             }
         }
