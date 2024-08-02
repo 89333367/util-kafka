@@ -70,7 +70,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
         });
 
         //每秒钟都提交一次，避免超时导致重平衡
-        CronUtil.schedule("0/1 * * * * ? ", (Task) () -> {
+        CronUtil.schedule("kafkaConsumerSubmitSchedule", "0/1 * * * * ? ", (Task) () -> {
             try {
                 lock.lock();
                 if (MapUtil.isNotEmpty(waitCommitOffsets)) {
@@ -86,7 +86,9 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             }
         });
         CronUtil.setMatchSecond(true);//开启秒级别定时任务
-        CronUtil.start();
+        if (!CronUtil.getScheduler().isStarted()) {
+            CronUtil.start();
+        }
 
         return INSTANCE;
     }
@@ -106,7 +108,9 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             log.warn("关闭consumer出现异常 {}", e.getMessage());
         }
         try {
-            CronUtil.stop();
+            if (CronUtil.getScheduler().isStarted()) {
+                CronUtil.stop();
+            }
         } catch (Exception e) {
             log.warn("关闭定时任务失败 {}", e.getMessage());
         }
