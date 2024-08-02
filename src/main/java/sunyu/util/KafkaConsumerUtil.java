@@ -51,13 +51,13 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
             @Override
             public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
                 //在消费者重新平衡开始时调用，这个方法在分区被撤销之前调用。你可以在这里提交偏移量或者执行其他清理工作。
-                log.debug("当前消费者准备重平衡 {}", partitions);
+                log.info("当前消费者准备重平衡 {}", partitions);
             }
 
             @Override
             public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
                 //在消费者重新平衡完成后调用，这个方法在新分配的分区被分配给消费者之后调用。你可以在这里初始化资源或重置状态。
-                log.debug("当前消费者重平衡完毕 {}", partitions);
+                log.info("当前消费者重平衡完毕 {}", partitions);
                 try {
                     lock.lock();
                     for (TopicPartition topicPartition : partitions) {

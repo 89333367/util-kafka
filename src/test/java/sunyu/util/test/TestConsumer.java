@@ -63,4 +63,19 @@ public class TestConsumer {
             log.info("处理完毕 {}", consumerRecord);
         });
     }
+
+
+    @Test
+    void t005() {
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
+                .setTopic("GENERAL_MSG")
+                .setBootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .setGroupId("test_group_kafka_consumer_util")
+                .build();
+        kafkaConsumerUtil.pollRecord(consumerRecord -> {
+            log.info("开始处理 {}", consumerRecord);
+            ThreadUtil.sleep(1000 * 60);
+            log.info("处理完毕 {}", consumerRecord);
+        });
+    }
 }

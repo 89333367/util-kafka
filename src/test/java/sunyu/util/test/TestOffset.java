@@ -51,6 +51,16 @@ public class TestOffset {
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .setGroupId("test_group_kafka_consumer_util")
                 .build();
-        kafkaOffsetUtil.showPartitions("US_GENERAL");
+        kafkaOffsetUtil.showPartitions("US_GENERAL_NJ");
+    }
+
+
+    @Test
+    void t006() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .setBootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .setGroupId("test_group_kafka_consumer_util")
+                .build();
+        kafkaOffsetUtil.showPartitions("GENERAL_MSG");
     }
 }
