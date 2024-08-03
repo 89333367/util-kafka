@@ -78,4 +78,39 @@ public class TestConsumer {
             //log.info("处理完毕 {}", consumerRecord);
         });
     }
+
+    @Test
+    void t006() {
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+                .setTopic("GENERAL_MSG")
+                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .setGroupId("test_group_kafka_consumer_util")
+                .build();
+        kafkaConsumerUtil.pollRecords(100, consumerRecords -> {
+            log.info("拉取了 {} 条", consumerRecords.count());
+            log.info("第一个offsets {}", consumerRecords.iterator().next());
+            ConsumerRecord<String, String> last = null;
+            for (ConsumerRecord<String, String> consumerRecord : consumerRecords) {
+                //log.info("{}", consumerRecord);
+                last = consumerRecord;
+            }
+            log.info("最后一个offsets {}", last);
+            ThreadUtil.sleep(1000 * 10);
+        });
+    }
+
+
+    @Test
+    void t007() {
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+                .setTopic("GENERAL_MSG")
+                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .setGroupId("test_group_kafka_consumer_util")
+                .build();
+        kafkaConsumerUtil.pollRecord(consumerRecord -> {
+            log.info("开始处理 {}", consumerRecord);
+            ThreadUtil.sleep(1000 * 31);
+            log.info("处理完毕 {}", consumerRecord);
+        });
+    }
 }

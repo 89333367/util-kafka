@@ -11,7 +11,7 @@ public class TestOffset {
                 .setGroupId("test_group_kafka_consumer_util")
                 .build();
         //重新调整某主题，某个分区的偏移量
-        kafkaOffsetUtil.seek("US_GENERAL", 0, 7927573);
+        kafkaOffsetUtil.seek("GENERAL_MSG", 0, 17236000);
     }
 
 
@@ -19,10 +19,10 @@ public class TestOffset {
     void t002() {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-                .setGroupId("test_group_20240625")
+                .setGroupId("test_group_kafka_consumer_util")
                 .build();
         //将某主题，某个分区的偏移量调整到最后
-        kafkaOffsetUtil.seekToEnd("US_GENERAL", 0);
+        kafkaOffsetUtil.seekToEnd("GENERAL_MSG", 0);
     }
 
     @Test
