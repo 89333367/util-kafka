@@ -1,7 +1,12 @@
 package sunyu.util.test;
 
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import sunyu.util.KafkaOffsetUtil;
+
+import java.util.Properties;
 
 public class TestOffset {
     @Test
@@ -62,5 +67,21 @@ public class TestOffset {
                 .setGroupId("test_group_kafka_consumer_util")
                 .build();
         kafkaOffsetUtil.showPartitions("GENERAL_MSG");
+    }
+
+
+    @Test
+    void t007() {
+        Properties config = new Properties();
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_kafka_consumer_util");
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .build(config);
+        kafkaOffsetUtil.showPartitions("GENERAL_MSG");
+        kafkaOffsetUtil.close();
     }
 }

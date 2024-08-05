@@ -2,10 +2,12 @@ package sunyu.util.test;
 
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.jupiter.api.Test;
 import sunyu.util.KafkaProducerUtil;
 
+import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -83,6 +85,19 @@ public class TestProducer {
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         //这里发送消息
+
+        //如果整个项目需要关闭，调用close释放资源
+        kafkaProducerUtil.close();
+    }
+
+    @Test
+    void 构建传参() {
+        Properties config = new Properties();
+        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .build(config);
+
+        kafkaProducerUtil.sendSync("test_topic", "key1", "value1");
 
         //如果整个项目需要关闭，调用close释放资源
         kafkaProducerUtil.close();

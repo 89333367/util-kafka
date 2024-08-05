@@ -3,11 +3,16 @@ package sunyu.util.test;
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import sunyu.util.KafkaConsumerUtil;
 
 import java.util.Arrays;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestConsumer {
     Log log = LogFactory.get();
@@ -118,6 +123,38 @@ public class TestConsumer {
             //record.value();
             ThreadUtil.sleep(1000 * 3);
             log.info("处理完毕 {}", consumerRecord);
+        });
+    }
+
+    @Test
+    void t008() {
+        AtomicInteger i = new AtomicInteger();
+        Properties config = new Properties();
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_kafka_consumer_util");
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+                //.setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+                .setTopic("GENERAL_MSG")
+                .build(config);//全局只要定义一个即可
+        kafkaConsumerUtil.pollRecord(consumerRecord -> {
+            if (i.get() >= 5) {
+                kafkaConsumerUtil.close();
+                return;
+            }
+            log.info("开始处理 {}", consumerRecord);
+            //处理消息，如果这里没有抛异常，则消息会自动提交offset，如果这里 throw Exception，那么这条消息不会提交offset，下次还会拉取回来
+            //record.offset();
+            //record.topic();
+            //record.partition();
+            //record.key();
+            //record.value();
+            ThreadUtil.sleep(1000 * 1);
+            log.info("处理完毕 {}", consumerRecord);
+            i.incrementAndGet();
         });
     }
 }

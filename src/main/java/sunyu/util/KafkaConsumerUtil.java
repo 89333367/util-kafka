@@ -194,7 +194,23 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                     Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
                     TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
                     try {
-                        callback.exec(record);
+                        try {
+                            lock.lock();
+                            if (!run) {
+                                return;
+                            }
+                        } finally {
+                            lock.unlock();
+                        }
+                        callback.exec(record);//单条消息回调
+                        try {
+                            lock.lock();
+                            if (!run) {
+                                return;
+                            }
+                        } finally {
+                            lock.unlock();
+                        }
                         try {
                             lock.lock();
                             if (partitionsAssigning) {//如果已经触发了重平衡，那么就不需要提交offsets了，可能会提交失败
@@ -241,7 +257,23 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                 }
                 pause();
                 try {
-                    callback.exec(records);
+                    try {
+                        lock.lock();
+                        if (!run) {
+                            return;
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
+                    callback.exec(records);//批量消息回调
+                    try {
+                        lock.lock();
+                        if (!run) {
+                            return;
+                        }
+                    } finally {
+                        lock.unlock();
+                    }
                     try {
                         lock.lock();
                         if (partitionsAssigning) {//如果已经触发了重平衡，那么就不需要提交offsets了，可能会提交失败
@@ -384,8 +416,8 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
     @Override
     public void close() {
         try {
-            log.info("销毁消费者工具开始");
             lock.lock();
+            log.info("销毁消费者工具开始");
             run = false;
             try {
                 log.info("关闭消费者对象开始");

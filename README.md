@@ -24,6 +24,7 @@
 ## kafka消费者
 
 ```java
+
 @Test
 void t007() {
     KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
@@ -79,6 +80,39 @@ void t002() {
             log.debug("{}", record);
             ThreadUtil.sleep(5000);//模拟record处理时间
         }
+    });
+}
+
+
+@Test
+void t008() {
+    AtomicInteger i = new AtomicInteger();
+    Properties config = new Properties();
+    config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+    config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
+    config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+    config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_kafka_consumer_util");
+    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+            //.setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+            .setTopic("GENERAL_MSG")
+            .build(config);//全局只要定义一个即可
+    kafkaConsumerUtil.pollRecord(consumerRecord -> {
+        if (i.get() >= 5) {
+            kafkaConsumerUtil.close();
+            return;
+        }
+        log.info("开始处理 {}", consumerRecord);
+        //处理消息，如果这里没有抛异常，则消息会自动提交offset，如果这里 throw Exception，那么这条消息不会提交offset，下次还会拉取回来
+        //record.offset();
+        //record.topic();
+        //record.partition();
+        //record.key();
+        //record.value();
+        ThreadUtil.sleep(1000 * 1);
+        log.info("处理完毕 {}", consumerRecord);
+        i.incrementAndGet();
     });
 }
 ```
@@ -162,6 +196,19 @@ void 关闭整个项目() {
     //如果整个项目需要关闭，调用close释放资源
     kafkaProducerUtil.close();
 }
+
+@Test
+void 构建传参() {
+    Properties config = new Properties();
+    config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+    KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+            .build(config);
+
+    kafkaProducerUtil.sendSync("test_topic", "key1", "value1");
+
+    //如果整个项目需要关闭，调用close释放资源
+    kafkaProducerUtil.close();
+}
 ```
 
 ### kafka偏移量使用
@@ -216,5 +263,20 @@ void t005() {
             .setGroupId("test_group_kafka_consumer_util")
             .build();
     kafkaOffsetUtil.showPartitions("US_GENERAL");
+}
+
+@Test
+void t007() {
+    Properties config = new Properties();
+    config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+    config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_kafka_consumer_util");
+    config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+    config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
+    config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+    KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+            .build(config);
+    kafkaOffsetUtil.showPartitions("GENERAL_MSG");
+    kafkaOffsetUtil.close();
 }
 ```
