@@ -24,6 +24,26 @@
 ## kafka消费者
 
 ```java
+@Test
+void t007() {
+    KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+            //.setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+            .setTopic("GENERAL_MSG")
+            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .setGroupId("test_group_kafka_consumer_util")
+            .build();//全局只要定义一个即可
+    kafkaConsumerUtil.pollRecord(consumerRecord -> {
+        log.info("开始处理 {}", consumerRecord);
+        //处理消息，如果这里没有抛异常，则消息会自动提交offset，如果这里 throws Exception，那么这条消息不会提交offset，下次还会拉取回来
+        //record.offset();
+        //record.topic();
+        //record.partition();
+        //record.key();
+        //record.value();
+        ThreadUtil.sleep(1000 * 3);
+        log.info("处理完毕 {}", consumerRecord);
+    });
+}
 
 @Test
 void t001() {
