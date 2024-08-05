@@ -227,6 +227,8 @@ public class KafkaProducerUtil implements Serializable, Closeable {
         } catch (Exception e) {
             log.error(e);
         }
+        config.clear();
+        producer = null;
     }
 
 

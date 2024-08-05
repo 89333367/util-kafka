@@ -271,7 +271,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
     }
 
     /**
-     * 获取工具类工厂
+     * 新建工具类工厂
      *
      * @return
      */
@@ -354,11 +354,22 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
      */
     @Override
     public void close() {
-        keepConsuming = false;
         try {
-            consumer.close();
-        } catch (Exception e) {
-            log.warn("关闭consumer出现异常 {}", e.getMessage());
+            lock.lock();
+            keepConsuming = false;
+            try {
+                consumer.close();
+            } catch (Exception e) {
+                log.warn("关闭consumer出现异常 {}", e.getMessage());
+            }
+            //后面重新初始化，有可能会调用close后重新build再使用
+            config.clear();
+            consumer = null;
+            topics = null;
+            pollIsPaused = false;
+            partitionsAssigning = false;
+        } finally {
+            lock.unlock();
         }
     }
 

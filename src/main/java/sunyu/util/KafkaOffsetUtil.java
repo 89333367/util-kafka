@@ -146,7 +146,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
     }
 
     /**
-     * 获取工具类工厂
+     * 新建工具类工厂
      *
      * @return
      */
@@ -172,6 +172,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
 
     @Override
     public void close() {
+        config.clear();
     }
 
 
