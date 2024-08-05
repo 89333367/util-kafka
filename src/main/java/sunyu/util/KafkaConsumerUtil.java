@@ -22,11 +22,11 @@ import java.util.concurrent.locks.ReentrantLock;
 public class KafkaConsumerUtil implements Serializable, Closeable {
     private Log log = LogFactory.get();
 
-    private boolean keepConsuming = true;//持续消费
+    private volatile boolean run = true;//持续循环消费
     private Properties config = new Properties();//消费者配置参数
     private Consumer<String, String> consumer;//消费者
     private List<String> topics;//消费主题集合
-    private volatile boolean pollIsPaused = false;//拉取数据暂停
+    private volatile boolean paused = false;//暂停拉取数据
     private ReentrantLock lock = new ReentrantLock();
     private volatile boolean partitionsAssigning = false;//分区重新分配中，分区再平衡
 
@@ -116,7 +116,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
     private void pause() {
         try {
             lock.lock();
-            pollIsPaused = true;
+            paused = true;
             consumer.pause(consumer.assignment().toArray(new TopicPartition[0]));
         } finally {
             lock.unlock();
@@ -129,7 +129,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
     private void resume() {
         try {
             lock.lock();
-            pollIsPaused = false;
+            paused = false;
             consumer.resume(consumer.assignment().toArray(new TopicPartition[0]));
         } finally {
             lock.unlock();
@@ -186,7 +186,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
      * @param callback 回调处理一条消息
      */
     public void pollRecord(ConsumerRecordCallback callback) {
-        while (keepConsuming) {
+        while (run) {
             ConsumerRecords<String, String> records = getRecords(100);
             if (records != null && records.count() > 0) {
                 pause();
@@ -198,7 +198,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                         try {
                             lock.lock();
                             if (partitionsAssigning) {//如果已经触发了重平衡，那么就不需要提交offsets了，可能会提交失败
-                                log.info("分区已触发重平衡，需要重新拉取数据，本条数据未提交offset");
+                                log.warn("分区已触发重平衡，需要重新拉取数据，本条数据未提交offset");
                                 break;
                             }
                             offsets.put(topicPartition, new OffsetAndMetadata(record.offset() + 1));
@@ -227,7 +227,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
      * @param callback 回调处理这一批消息
      */
     public void pollRecords(long pollTime, ConsumerRecordsCallback callback) {
-        while (keepConsuming) {
+        while (run) {
             ConsumerRecords<String, String> records = getRecords(pollTime);
             if (records != null && records.count() > 0) {
                 Map<TopicPartition, OffsetAndMetadata> firstOffsets = new HashMap<>();
@@ -245,7 +245,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                     try {
                         lock.lock();
                         if (partitionsAssigning) {//如果已经触发了重平衡，那么就不需要提交offsets了，可能会提交失败
-                            log.info("分区已触发重平衡，需要重新拉取数据，本批数据未提交offsets");
+                            log.warn("分区已触发重平衡，需要重新拉取数据，本批数据未提交offsets");
                             continue;
                         }
                         consumer.commitSync(lastOffsets);
@@ -333,11 +333,11 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
         //维持心跳，避免消息处理超时导致重平衡
         ThreadUtil.execute(() -> {
             log.info("增加消费者心跳机制");
-            while (keepConsuming) {
+            while (run) {
                 ThreadUtil.sleep(1000 * 5);
                 try {
                     lock.lock();
-                    if (pollIsPaused && partitionsAssigning == false) {
+                    if (paused && partitionsAssigning == false) {
                         consumer.poll(0);//当暂停拉取消息时，调用poll，只是发心跳，不会将消息拉取回来，不会改变offsets
                     }
                 } finally {
@@ -360,7 +360,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
         try {
             log.info("销毁消费者工具开始");
             lock.lock();
-            keepConsuming = false;
+            run = false;
             try {
                 log.info("关闭消费者对象开始");
                 consumer.close();
@@ -372,7 +372,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
             config.clear();
             consumer = null;
             topics = null;
-            pollIsPaused = false;
+            paused = false;
             partitionsAssigning = false;
             log.info("销毁消费者工具成功");
         } catch (Exception e) {

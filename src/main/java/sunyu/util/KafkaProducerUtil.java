@@ -177,7 +177,7 @@ public class KafkaProducerUtil implements Serializable, Closeable {
          * 默认情况下，retries 配置被设置为 2147483647，即尝试无限次数重试直到发送成功。通常情况下，建议仅在服务器存在故障的情况下才启用重试功能。
          * 最好根据您应用程序特定的可靠性需求来选择重试数量和间隔时间。通过设置正确的"acks" 和 "retry" 策略，可以实现高效且可靠的 Kafka 消息传递。
          */
-        config.put(ProducerConfig.RETRIES_CONFIG, 0);
+        //config.put(ProducerConfig.RETRIES_CONFIG, 0);
 
         /**
          * 用于设置生产者在发送数据之前等待收集到的消息批量大小。具体来说，这个参数指定了一批消息的大小，当达到这个大小后，
