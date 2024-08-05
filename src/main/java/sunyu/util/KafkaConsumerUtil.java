@@ -285,7 +285,9 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
      * @return
      */
     public KafkaConsumerUtil build() {
+        log.info("构建消费者工具开始");
         if (consumer != null) {
+            log.warn("消费者工具已构建，不要重复构建工具");
             return this;
         }
         //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
@@ -330,6 +332,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
 
         //维持心跳，避免消息处理超时导致重平衡
         ThreadUtil.execute(() -> {
+            log.info("增加消费者心跳机制");
             while (keepConsuming) {
                 ThreadUtil.sleep(1000 * 5);
                 try {
@@ -342,7 +345,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                 }
             }
         });
-
+        log.info("构建消费者工具完毕");
         return this;
     }
 
@@ -355,12 +358,15 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
     @Override
     public void close() {
         try {
+            log.info("销毁消费者工具开始");
             lock.lock();
             keepConsuming = false;
             try {
+                log.info("关闭消费者对象开始");
                 consumer.close();
-                log.info("关闭consumer成功");
+                log.info("关闭消费者对象成功");
             } catch (Exception e) {
+                log.warn("关闭消费者对象失败 {}", e.getMessage());
             }
             //后面重新初始化，有可能会调用close后重新build再使用
             config.clear();
@@ -368,6 +374,9 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
             topics = null;
             pollIsPaused = false;
             partitionsAssigning = false;
+            log.info("销毁消费者工具成功");
+        } catch (Exception e) {
+            log.warn("销毁消费者工具失败 {}", e.getMessage());
         } finally {
             lock.unlock();
         }

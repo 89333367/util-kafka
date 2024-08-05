@@ -150,7 +150,9 @@ public class KafkaProducerUtil implements Serializable, Closeable {
      * @return
      */
     public KafkaProducerUtil build() {
+        log.info("构建生产者工具开始");
         if (producer != null) {
+            log.warn("构建生产者工具已构建，不要重复构建工具");
             return this;
         }
         //producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
@@ -207,6 +209,7 @@ public class KafkaProducerUtil implements Serializable, Closeable {
          */
         //producerConfig.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
         producer = new KafkaProducer<>(config);
+        log.info("构建生产者工具成功");
         return this;
     }
 
@@ -217,19 +220,24 @@ public class KafkaProducerUtil implements Serializable, Closeable {
      */
     @Override
     public void close() {
+        log.info("销毁构建生产者工具开始");
         try {
+            log.info("刷新数据开始");
             producer.flush();
-            log.info("数据刷新成功");
+            log.info("刷新数据成功");
         } catch (Exception e) {
-            log.error(e);
+            log.error("刷新数据失败 {}", e.getMessage());
         }
         try {
+            log.info("关闭生产者开始");
             producer.close();
-            log.info("关闭producer成功");
+            log.info("关闭生产者成功");
         } catch (Exception e) {
+            log.warn("关闭生产者失败 {}", e.getMessage());
         }
         config.clear();
         producer = null;
+        log.info("销毁构建生产者工具完毕");
     }
 
 
