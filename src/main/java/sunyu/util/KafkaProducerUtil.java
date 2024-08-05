@@ -20,7 +20,6 @@ import java.util.concurrent.Future;
  */
 public class KafkaProducerUtil implements Serializable, Closeable {
     private Log log = LogFactory.get();
-    private static final KafkaProducerUtil INSTANCE = new KafkaProducerUtil();
 
 
     private Properties config = new Properties();
@@ -38,7 +37,7 @@ public class KafkaProducerUtil implements Serializable, Closeable {
      */
     public KafkaProducerUtil setBootstrapServers(String bootstrapServers) {
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        return INSTANCE;
+        return this;
     }
 
 
@@ -142,7 +141,7 @@ public class KafkaProducerUtil implements Serializable, Closeable {
      * @return
      */
     public static KafkaProducerUtil builder() {
-        return INSTANCE;
+        return new KafkaProducerUtil();
     }
 
     /**
@@ -151,6 +150,9 @@ public class KafkaProducerUtil implements Serializable, Closeable {
      * @return
      */
     public KafkaProducerUtil build() {
+        if (producer != null) {
+            return this;
+        }
         //producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
@@ -205,7 +207,7 @@ public class KafkaProducerUtil implements Serializable, Closeable {
          */
         //producerConfig.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
         producer = new KafkaProducer<>(config);
-        return INSTANCE;
+        return this;
     }
 
     /**

@@ -21,7 +21,6 @@ import java.util.*;
  */
 public class KafkaOffsetUtil implements Serializable, Closeable {
     private Log log = LogFactory.get();
-    private static final KafkaOffsetUtil INSTANCE = new KafkaOffsetUtil();
 
 
     private Properties config = new Properties();
@@ -34,7 +33,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
      */
     public KafkaOffsetUtil setBootstrapServers(String bootstrapServers) {
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        return INSTANCE;
+        return this;
     }
 
     /**
@@ -45,7 +44,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
      */
     public KafkaOffsetUtil setGroupId(String groupId) {
         config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        return INSTANCE;
+        return this;
     }
 
 
@@ -152,7 +151,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
      * @return
      */
     public static KafkaOffsetUtil builder() {
-        return INSTANCE;
+        return new KafkaOffsetUtil();
     }
 
     /**
@@ -168,7 +167,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        return INSTANCE;
+        return this;
     }
 
     @Override
