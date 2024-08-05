@@ -52,7 +52,7 @@ public class TestConsumer {
 
     @Test
     void t004() {
-        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
                 .setTopic("US_GENERAL")
                 .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .setGroupId("test_group_20240625")
@@ -67,7 +67,7 @@ public class TestConsumer {
 
     @Test
     void t005() {
-        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.INSTANCE
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
                 .setTopic("GENERAL_MSG")
                 .setBootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
                 .setGroupId("test_group_kafka_consumer_util")

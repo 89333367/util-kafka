@@ -19,103 +19,13 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @author 孙宇
  */
-public enum KafkaConsumerUtil implements Serializable, Closeable {
-    INSTANCE;
+public class KafkaConsumerUtil implements Serializable, Closeable {
     private Log log = LogFactory.get();
 
-    /**
-     * 获取工具类工厂
-     *
-     * @return
-     */
-    public static KafkaConsumerUtil builder() {
-        return INSTANCE;
-    }
-
-    /**
-     * 构建工具类
-     *
-     * @return
-     */
-    public KafkaConsumerUtil build() {
-        //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
-        //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
-        //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
-        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        consumer = new KafkaConsumer<>(config);
-        consumer.subscribe(topics, new ConsumerRebalanceListener() {
-            @Override
-            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
-                //在消费者重新平衡开始时调用，这个方法在分区被撤销之前调用。你可以在这里提交偏移量或者执行其他清理工作。
-                try {
-                    lock.lock();
-                    if (CollUtil.isNotEmpty(partitions)) {
-                        log.info("{} 触发分区重平衡，平衡前拥有 {} 个分区 {}", config.get(ConsumerConfig.GROUP_ID_CONFIG), partitions.size(), partitions);
-                    } else {
-                        log.info("{} 进行分区平衡", config.get(ConsumerConfig.GROUP_ID_CONFIG));
-                    }
-                } finally {
-                    lock.unlock();
-                }
-            }
-
-            @Override
-            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
-                //在消费者重新平衡完成后调用，这个方法在新分配的分区被分配给消费者之后调用。你可以在这里初始化资源或重置状态。
-                try {
-                    lock.lock();
-                    partitionsAssigning = true;//标记分区重平衡，在commit offsets之前判断是否重新拉取数据
-                    log.info("{} 分区平衡完毕，拿到了 {} 个分区 {}", config.get(ConsumerConfig.GROUP_ID_CONFIG), partitions.size(), partitions);
-                    for (TopicPartition topicPartition : partitions) {
-                        seekToCommitted(topicPartition);
-                    }
-                } finally {
-                    lock.unlock();
-                }
-            }
-        });
-
-        //维持心跳，避免消息处理超时导致重平衡
-        ThreadUtil.execute(() -> {
-            while (keepConsuming) {
-                ThreadUtil.sleep(1000 * 5);
-                try {
-                    lock.lock();
-                    if (pollIsPaused && partitionsAssigning == false) {
-                        consumer.poll(0);//当暂停拉取消息时，调用poll，只是发心跳，不会将消息拉取回来，不会改变offsets
-                    }
-                } finally {
-                    lock.unlock();
-                }
-            }
-        });
-
-        return INSTANCE;
-    }
-
-
-    /**
-     * 停止消费，释放资源
-     *
-     * @throws IOException
-     */
-    @Override
-    public void close() {
-        keepConsuming = false;
-        try {
-            consumer.close();
-        } catch (Exception e) {
-            log.warn("关闭consumer出现异常 {}", e.getMessage());
-        }
-    }
-
     private boolean keepConsuming = true;//持续消费
-    private Properties config = new Properties();
-    private Consumer<String, String> consumer;
-    private List<String> topics;
+    private Properties config = new Properties();//消费者配置参数
+    private Consumer<String, String> consumer;//消费者
+    private List<String> topics;//消费主题集合
     private volatile boolean pollIsPaused = false;//拉取数据暂停
     private ReentrantLock lock = new ReentrantLock();
     private volatile boolean partitionsAssigning = false;//分区重新分配中，分区再平衡
@@ -234,7 +144,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
      */
     public KafkaConsumerUtil setBootstrapServers(String bootstrapServers) {
         config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        return INSTANCE;
+        return this;
     }
 
     /**
@@ -245,7 +155,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
      */
     public KafkaConsumerUtil setGroupId(String groupId) {
         config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-        return INSTANCE;
+        return this;
     }
 
     /**
@@ -256,7 +166,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
      */
     public KafkaConsumerUtil setTopics(List<String> topics) {
         this.topics = topics;
-        return INSTANCE;
+        return this;
     }
 
     /**
@@ -267,7 +177,7 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
      */
     public KafkaConsumerUtil setTopic(String topic) {
         topics = Arrays.asList(topic);
-        return INSTANCE;
+        return this;
     }
 
     /**
@@ -350,6 +260,102 @@ public enum KafkaConsumerUtil implements Serializable, Closeable {
                 }
                 resume();
             }
+        }
+    }
+
+
+    /**
+     * 私有构造函数，防止外部实例化
+     */
+    private KafkaConsumerUtil() {
+    }
+
+    /**
+     * 获取工具类工厂
+     *
+     * @return
+     */
+    public static KafkaConsumerUtil builder() {
+        return new KafkaConsumerUtil();
+    }
+
+    /**
+     * 构建工具类
+     *
+     * @return
+     */
+    public KafkaConsumerUtil build() {
+        //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
+        //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+        //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        consumer = new KafkaConsumer<>(config);
+        consumer.subscribe(topics, new ConsumerRebalanceListener() {
+            @Override
+            public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
+                //在消费者重新平衡开始时调用，这个方法在分区被撤销之前调用。你可以在这里提交偏移量或者执行其他清理工作。
+                try {
+                    lock.lock();
+                    if (CollUtil.isNotEmpty(partitions)) {
+                        log.info("{} 触发分区重平衡，平衡前拥有 {} 个分区 {}", config.get(ConsumerConfig.GROUP_ID_CONFIG), partitions.size(), partitions);
+                    } else {
+                        log.info("{} 进行分区平衡", config.get(ConsumerConfig.GROUP_ID_CONFIG));
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            }
+
+            @Override
+            public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
+                //在消费者重新平衡完成后调用，这个方法在新分配的分区被分配给消费者之后调用。你可以在这里初始化资源或重置状态。
+                try {
+                    lock.lock();
+                    partitionsAssigning = true;//标记分区重平衡，在commit offsets之前判断是否重新拉取数据
+                    log.info("{} 分区平衡完毕，拿到了 {} 个分区 {}", config.get(ConsumerConfig.GROUP_ID_CONFIG), partitions.size(), partitions);
+                    for (TopicPartition topicPartition : partitions) {
+                        seekToCommitted(topicPartition);
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            }
+        });
+
+        //维持心跳，避免消息处理超时导致重平衡
+        ThreadUtil.execute(() -> {
+            while (keepConsuming) {
+                ThreadUtil.sleep(1000 * 5);
+                try {
+                    lock.lock();
+                    if (pollIsPaused && partitionsAssigning == false) {
+                        consumer.poll(0);//当暂停拉取消息时，调用poll，只是发心跳，不会将消息拉取回来，不会改变offsets
+                    }
+                } finally {
+                    lock.unlock();
+                }
+            }
+        });
+
+        return this;
+    }
+
+
+    /**
+     * 停止消费，释放资源
+     *
+     * @throws IOException
+     */
+    @Override
+    public void close() {
+        keepConsuming = false;
+        try {
+            consumer.close();
+        } catch (Exception e) {
+            log.warn("关闭consumer出现异常 {}", e.getMessage());
         }
     }
 
