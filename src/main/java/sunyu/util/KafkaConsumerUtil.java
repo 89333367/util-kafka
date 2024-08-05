@@ -285,6 +285,9 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
      * @return
      */
     public KafkaConsumerUtil build() {
+        if (consumer != null) {
+            return this;
+        }
         //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
         //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
         //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
