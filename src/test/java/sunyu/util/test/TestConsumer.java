@@ -110,7 +110,7 @@ public class TestConsumer {
                 .build();//全局只要定义一个即可
         kafkaConsumerUtil.pollRecord(consumerRecord -> {
             log.info("开始处理 {}", consumerRecord);
-            //处理消息，如果这里没有抛异常，则消息会自动提交offset，如果这里 throws Exception，那么这条消息不会提交offset，下次还会拉取回来
+            //处理消息，如果这里没有抛异常，则消息会自动提交offset，如果这里 throw Exception，那么这条消息不会提交offset，下次还会拉取回来
             //record.offset();
             //record.topic();
             //record.partition();
