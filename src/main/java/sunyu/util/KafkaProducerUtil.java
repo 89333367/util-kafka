@@ -219,13 +219,14 @@ public class KafkaProducerUtil implements Serializable, Closeable {
     public void close() {
         try {
             producer.flush();
+            log.info("数据刷新成功");
         } catch (Exception e) {
             log.error(e);
         }
         try {
             producer.close();
+            log.info("关闭producer成功");
         } catch (Exception e) {
-            log.error(e);
         }
         config.clear();
         producer = null;

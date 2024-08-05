@@ -359,8 +359,8 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
             keepConsuming = false;
             try {
                 consumer.close();
+                log.info("关闭consumer成功");
             } catch (Exception e) {
-                log.warn("关闭consumer出现异常 {}", e.getMessage());
             }
             //后面重新初始化，有可能会调用close后重新build再使用
             config.clear();
