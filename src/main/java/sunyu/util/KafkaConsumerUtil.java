@@ -279,24 +279,33 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
         return new KafkaConsumerUtil();
     }
 
+
     /**
      * 构建工具类
      *
+     * @param config ConsumerConfig参数
      * @return
      */
-    public KafkaConsumerUtil build() {
+    public KafkaConsumerUtil build(Properties config) {
         log.info("构建消费者工具开始");
         if (consumer != null) {
             log.warn("消费者工具已构建，不要重复构建工具");
             return this;
         }
-        //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
-        //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
-        //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
-        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+        if (!config.containsKey(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG)) {
+            config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        }
+        if (!config.containsKey(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)) {
+            config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
+        }
+        if (!config.containsKey(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG)) {
+            config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        }
+        if (!config.containsKey(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG)) {
+            config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        }
+
         consumer = new KafkaConsumer<>(config);
         consumer.subscribe(topics, new ConsumerRebalanceListener() {
             @Override
@@ -347,6 +356,23 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
         });
         log.info("构建消费者工具完毕");
         return this;
+    }
+
+
+    /**
+     * 构建工具类
+     *
+     * @return
+     */
+    public KafkaConsumerUtil build() {
+        //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
+        //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+        //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        return build(config);
     }
 
 

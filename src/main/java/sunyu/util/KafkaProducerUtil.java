@@ -147,14 +147,35 @@ public class KafkaProducerUtil implements Serializable, Closeable {
     /**
      * 构建工具类
      *
+     * @param config
      * @return
      */
-    public KafkaProducerUtil build() {
+    public KafkaProducerUtil build(Properties config) {
         log.info("构建生产者工具开始");
         if (producer != null) {
             log.warn("构建生产者工具已构建，不要重复构建工具");
             return this;
         }
+
+        if (!config.containsKey(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG)) {
+            config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        }
+        if (!config.containsKey(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG)) {
+            config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        }
+        if (!config.containsKey(ProducerConfig.ACKS_CONFIG)) {
+            config.put(ProducerConfig.ACKS_CONFIG, "all");
+        }
+        if (config.containsKey(ProducerConfig.LINGER_MS_CONFIG)) {
+            config.put(ProducerConfig.LINGER_MS_CONFIG, 100);
+        }
+
+        producer = new KafkaProducer<>(config);
+        log.info("构建生产者工具成功");
+        return this;
+    }
+
+    public KafkaProducerUtil build() {
         //producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
@@ -208,9 +229,7 @@ public class KafkaProducerUtil implements Serializable, Closeable {
          * 以充分利用可用空间同时避免内存耗尽和系统抖动等问题。请注意，此值必须大于或等于 batch.size 和 compression.type 相关配置的总字节数。
          */
         //producerConfig.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
-        producer = new KafkaProducer<>(config);
-        log.info("构建生产者工具成功");
-        return this;
+        return build(config);
     }
 
     /**

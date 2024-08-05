@@ -109,7 +109,7 @@ public class TestConsumer {
                 .build();
         kafkaConsumerUtil.pollRecord(consumerRecord -> {
             log.info("开始处理 {}", consumerRecord);
-            ThreadUtil.sleep(1000 * 31);
+            ThreadUtil.sleep(1000 * 3);
             log.info("处理完毕 {}", consumerRecord);
         });
     }

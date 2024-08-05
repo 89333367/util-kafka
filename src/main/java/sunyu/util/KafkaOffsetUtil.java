@@ -154,13 +154,32 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
         return new KafkaOffsetUtil();
     }
 
+
+    public KafkaOffsetUtil build(Properties config) {
+        log.info("构建偏移量工具开始");
+        if (!config.containsKey(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG)) {
+            config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        }
+        if (!config.containsKey(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)) {
+            config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
+        }
+        if (!config.containsKey(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG)) {
+            config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        }
+        if (!config.containsKey(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG)) {
+            config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        }
+        this.config.putAll(config);
+        log.info("构建偏移量工具完毕");
+        return this;
+    }
+
     /**
      * 构建工具类
      *
      * @return
      */
     public KafkaOffsetUtil build() {
-        log.info("构建偏移量工具开始");
         //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
         //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
         //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
@@ -168,8 +187,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        log.info("构建偏移量工具完毕");
-        return this;
+        return build(config);
     }
 
     @Override
