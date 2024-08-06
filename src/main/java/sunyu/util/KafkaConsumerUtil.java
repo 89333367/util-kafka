@@ -372,8 +372,8 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
         });
 
         //维持心跳，避免消息处理超时导致重平衡
+        log.info("为消费者扩展心跳机制，维持心跳避免消息处理时间过长导致重平衡");
         ThreadUtil.execute(() -> {
-            log.info("增加消费者心跳机制");
             while (run) {
                 ThreadUtil.sleep(1000 * 5);
                 try {
