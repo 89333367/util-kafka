@@ -32,11 +32,11 @@ public class KafkaProducerUtil implements Serializable, Closeable {
     /**
      * 设置kafka地址
      *
-     * @param bootstrapServers kafka地址，多个地址使用英文半角逗号分割(cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092)
+     * @param servers kafka地址，多个地址使用英文半角逗号分割(cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092)
      * @return
      */
-    public KafkaProducerUtil setBootstrapServers(String bootstrapServers) {
-        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    public KafkaProducerUtil bootstrapServers(String servers) {
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
         return this;
     }
 

@@ -17,7 +17,7 @@
 <dependency>
     <groupId>sunyu.util</groupId>
     <artifactId>util-kafka</artifactId>
-    <version>kafka-clients-0.9.0.1_v5.0</version>
+    <version>kafka-clients-0.9.0.1_v6.0</version>
 </dependency>
 ```
 
@@ -28,10 +28,10 @@
 @Test
 void t007() {
     KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
-            //.setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-            .setTopic("GENERAL_MSG")
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
+            //.topics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+            .topic("GENERAL_MSG")
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .groupId("test_group_kafka_consumer_util")
             .build();//全局只要定义一个即可
     kafkaConsumerUtil.pollRecord(consumerRecord -> {
         log.info("开始处理 {}", consumerRecord);
@@ -49,9 +49,9 @@ void t007() {
 @Test
 void t001() {
     KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
-            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .groupId("test_group_kafka_consumer_util")
+            .topics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
             .build();
     //持续消费，一条一条处理，处理完毕后，只要不抛异常，会自动提交offset
     kafkaConsumerUtil.pollRecord((record) -> {
@@ -69,9 +69,9 @@ void t001() {
 @Test
 void t002() {
     KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
-            .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .groupId("test_group_kafka_consumer_util")
+            .topics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
             .build();
     //持续消费，一批一批处理，处理完毕后，只要不抛异常，会自动提交offset
     kafkaConsumerUtil.pollRecords(100, records -> {
@@ -95,8 +95,8 @@ void t008() {
     config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
     config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_kafka_consumer_util");
     KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
-            //.setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-            .setTopic("GENERAL_MSG")
+            //.topics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+            .topic("GENERAL_MSG")
             .build(config);//全局只要定义一个即可
     kafkaConsumerUtil.pollRecord(consumerRecord -> {
         if (i.get() >= 5) {
@@ -124,7 +124,7 @@ void t008() {
 @Test
 void 同步发送消息() {
     KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .build();
     kafkaProducerUtil.sendSync("主题", "键，这里可以为null", "值");
     kafkaProducerUtil.flush();//如果想消息立刻发送，不缓存，那么调用这句话，否则消息会缓存一下，隔一会才发送
@@ -133,7 +133,7 @@ void 同步发送消息() {
 @Test
 void 同步发送消息并且自己处理metadata和exception() {
     KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .build();
     kafkaProducerUtil.sendSync("主题", "键，这里可以为null", "值", (metadata, exception) -> {
         // 这里你可以自己处理 metadata 和 exception 异常信息
@@ -144,7 +144,7 @@ void 同步发送消息并且自己处理metadata和exception() {
 @Test
 void 异步发送消息() {
     KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .build();
     Future<RecordMetadata> recordMetadataFuture = kafkaProducerUtil.sendAsync("主题", "键，这里可以为null", "值");
     try {
@@ -160,7 +160,7 @@ void 异步发送消息() {
 @Test
 void 异步发送消息并且自己处理metadata和exception() {
     KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .build();
     Future<RecordMetadata> recordMetadataFuture = kafkaProducerUtil.sendAsync("主题", "键，这里可以为null", "值", (metadata, exception) -> {
         // 这里你可以自己处理 metadata 和 exception 异常信息
@@ -178,7 +178,7 @@ void 异步发送消息并且自己处理metadata和exception() {
 @Test
 void 批量发送消息() {
     KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .build();
     for (int i = 0; i < 10000; i++) {
         //这里发送消息
@@ -189,7 +189,7 @@ void 批量发送消息() {
 @Test
 void 关闭整个项目() {
     KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .build();
     //这里发送消息
 
@@ -218,8 +218,8 @@ void 构建传参() {
 @Test
 void t001() {
     KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .groupId("test_group_kafka_consumer_util")
             .build();
     //重新调整某主题，某个分区的偏移量
     kafkaOffsetUtil.seek("US_GENERAL", 0, 7927573);
@@ -229,8 +229,8 @@ void t001() {
 @Test
 void t002() {
     KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .groupId("test_group_kafka_consumer_util")
             .build();
     //将某主题，某个分区的偏移量调整到最后
     kafkaOffsetUtil.seekToEnd("US_GENERAL", 0);
@@ -239,8 +239,8 @@ void t002() {
 @Test
 void t003() {
     KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .groupId("test_group_kafka_consumer_util")
             .build();
     //将某主题，某个分区的偏移量调整到最前
     kafkaOffsetUtil.seekToBeginning("US_GENERAL", 0);
@@ -249,8 +249,8 @@ void t003() {
 @Test
 void t004() {
     KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .groupId("test_group_kafka_consumer_util")
             .build();
     //控制台debug查看某主题，某分区的偏移量情况
     kafkaOffsetUtil.showOffsets("US_GENERAL", 0);
@@ -259,8 +259,8 @@ void t004() {
 @Test
 void t005() {
     KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
-            .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .setGroupId("test_group_kafka_consumer_util")
+            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+            .groupId("test_group_kafka_consumer_util")
             .build();
     kafkaOffsetUtil.showPartitions("US_GENERAL");
 }

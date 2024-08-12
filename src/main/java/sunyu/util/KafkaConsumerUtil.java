@@ -139,22 +139,22 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
     /**
      * 设置kafka地址
      *
-     * @param bootstrapServers kafka地址，多个地址使用英文半角逗号分割(cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092)
+     * @param servers kafka地址，多个地址使用英文半角逗号分割(cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092)
      * @return
      */
-    public KafkaConsumerUtil setBootstrapServers(String bootstrapServers) {
-        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    public KafkaConsumerUtil bootstrapServers(String servers) {
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
         return this;
     }
 
     /**
      * 设置消费者组
      *
-     * @param groupId 组id
+     * @param id 组id
      * @return
      */
-    public KafkaConsumerUtil setGroupId(String groupId) {
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+    public KafkaConsumerUtil groupId(String id) {
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, id);
         return this;
     }
 
@@ -164,7 +164,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
      * @param topics 主题集合
      * @return
      */
-    public KafkaConsumerUtil setTopics(List<String> topics) {
+    public KafkaConsumerUtil topics(List<String> topics) {
         this.topics = topics;
         return this;
     }
@@ -175,7 +175,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
      * @param topic 主题
      * @return
      */
-    public KafkaConsumerUtil setTopic(String topic) {
+    public KafkaConsumerUtil topic(String topic) {
         topics = Arrays.asList(topic);
         return this;
     }

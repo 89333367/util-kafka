@@ -17,7 +17,7 @@ public class TestProducer {
     @Test
     void 同步发送消息() {
         KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         kafkaProducerUtil.sendSync("主题", "键，这里可以为null", "值");
         kafkaProducerUtil.flush();//如果想消息立刻发送，不缓存，那么调用这句话，否则消息会缓存一下，隔一会才发送
@@ -26,7 +26,7 @@ public class TestProducer {
     @Test
     void 同步发送消息并且自己处理metadata和exception() {
         KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         kafkaProducerUtil.sendSync("主题", "键，这里可以为null", "值", (metadata, exception) -> {
             // 这里你可以自己处理 metadata 和 exception 异常信息
@@ -37,7 +37,7 @@ public class TestProducer {
     @Test
     void 异步发送消息() {
         KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         Future<RecordMetadata> recordMetadataFuture = kafkaProducerUtil.sendAsync("主题", "键，这里可以为null", "值");
         try {
@@ -53,7 +53,7 @@ public class TestProducer {
     @Test
     void 异步发送消息并且自己处理metadata和exception() {
         KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         Future<RecordMetadata> recordMetadataFuture = kafkaProducerUtil.sendAsync("主题", "键，这里可以为null", "值", (metadata, exception) -> {
             // 这里你可以自己处理 metadata 和 exception 异常信息
@@ -71,7 +71,7 @@ public class TestProducer {
     @Test
     void 批量发送消息() {
         KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         for (int i = 0; i < 10000; i++) {
             //这里发送消息
@@ -82,7 +82,7 @@ public class TestProducer {
     @Test
     void 关闭整个项目() {
         KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
         //这里发送消息
 

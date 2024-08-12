@@ -20,9 +20,9 @@ public class TestConsumer {
     @Test
     void t001() {
         KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
-                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-                .setGroupId("test_group_kafka_consumer_util")
-                .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
                 .build();
         //持续消费，一条一条处理，处理完毕后，只要不抛异常，会自动提交offset
         kafkaConsumerUtil.pollRecord((record) -> {
@@ -40,9 +40,9 @@ public class TestConsumer {
     @Test
     void t002() {
         KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
-                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-                .setGroupId("test_group_kafka_consumer_util")
-                .setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
                 .build();
         //持续消费，一批一批处理，处理完毕后，只要不抛异常，会自动提交offset
         kafkaConsumerUtil.pollRecords(100, records -> {
@@ -58,9 +58,9 @@ public class TestConsumer {
     @Test
     void t004() {
         KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
-                .setTopic("US_GENERAL")
-                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-                .setGroupId("test_group_20240625")
+                .topic("US_GENERAL")
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_20240625")
                 .build();
         kafkaConsumerUtil.pollRecord(consumerRecord -> {
             log.info("开始处理 {}", consumerRecord);
@@ -73,9 +73,9 @@ public class TestConsumer {
     @Test
     void t005() {
         KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
-                .setTopic("GENERAL_MSG")
-                .setBootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
-                .setGroupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .groupId("test_group_kafka_consumer_util")
                 .build();
         kafkaConsumerUtil.pollRecord(consumerRecord -> {
             log.info("开始处理 {}", consumerRecord);
@@ -87,9 +87,9 @@ public class TestConsumer {
     @Test
     void t006() {
         KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
-                .setTopic("GENERAL_MSG")
-                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-                .setGroupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
                 .build();
         kafkaConsumerUtil.pollRecords(100, consumerRecords -> {
             log.info("拉取了 {} 条", consumerRecords.count());
@@ -109,9 +109,9 @@ public class TestConsumer {
     void t007() {
         KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
                 //.setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-                .setTopic("GENERAL_MSG")
-                .setBootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-                .setGroupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
                 .build();//全局只要定义一个即可
         kafkaConsumerUtil.pollRecord(consumerRecord -> {
             log.info("开始处理 {}", consumerRecord);
@@ -138,7 +138,7 @@ public class TestConsumer {
         config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_kafka_consumer_util");
         KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
                 //.setTopics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-                .setTopic("GENERAL_MSG")
+                .topic("GENERAL_MSG")
                 .build(config);//全局只要定义一个即可
         kafkaConsumerUtil.pollRecord(consumerRecord -> {
             if (i.get() >= 5) {
