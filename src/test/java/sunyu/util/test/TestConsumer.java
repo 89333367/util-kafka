@@ -157,4 +157,11 @@ public class TestConsumer {
             i.incrementAndGet();
         });
     }
+
+    @Test
+    void t() {
+        log.info("info");
+        log.debug("debug");
+        log.warn("warn");
+    }
 }
