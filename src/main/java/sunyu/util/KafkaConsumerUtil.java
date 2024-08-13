@@ -26,9 +26,9 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
     private Properties config = new Properties();//消费者配置参数
     private Consumer<String, String> consumer;//消费者
     private List<String> topics;//消费主题集合
-    private volatile boolean paused = false;//暂停拉取数据
+    private volatile boolean pausePoll = false;//是否暂停拉取数据
     private ReentrantLock lock = new ReentrantLock();
-    private volatile boolean partitionsAssigning = false;//分区重新分配中，分区再平衡
+    private volatile boolean partitionsAssigned = false;//是否触发了分区再平衡
 
     public interface ConsumerRecordCallback {
         void exec(ConsumerRecord<String, String> record) throws Exception;
@@ -103,7 +103,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
     private ConsumerRecords<String, String> getRecords(long pollTime) {
         try {
             lock.lock();
-            partitionsAssigning = false;
+            partitionsAssigned = false;
             return consumer.poll(pollTime);
         } finally {
             lock.unlock();
@@ -116,7 +116,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
     private void pause() {
         try {
             lock.lock();
-            paused = true;
+            pausePoll = true;
             consumer.pause(consumer.assignment().toArray(new TopicPartition[0]));
         } finally {
             lock.unlock();
@@ -129,7 +129,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
     private void resume() {
         try {
             lock.lock();
-            paused = false;
+            pausePoll = false;
             consumer.resume(consumer.assignment().toArray(new TopicPartition[0]));
         } finally {
             lock.unlock();
@@ -213,14 +213,14 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                         }
                         try {
                             lock.lock();
-                            if (partitionsAssigning) {//如果已经触发了重平衡，那么就不需要提交offsets了，可能会提交失败
+                            if (partitionsAssigned) {//如果已经触发了重平衡，那么就不需要提交offsets了，可能会提交失败
                                 log.warn("分区已触发重平衡，需要重新拉取数据，本条数据未提交offset");
                                 break;
                             }
                             offsets.put(topicPartition, new OffsetAndMetadata(record.offset() + 1));
                             consumer.commitSync(offsets);
                         } catch (Exception e) {
-                            log.error("这条消息处理成功，但提交offset失败 {} {}", record, e.getMessage());
+                            log.warn("这条消息处理成功，但提交offset失败 {} {}", record, e.getMessage());
                         } finally {
                             lock.unlock();
                         }
@@ -246,6 +246,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
         while (run) {
             ConsumerRecords<String, String> records = getRecords(pollTime);
             if (records != null && records.count() > 0) {
+                pause();
                 Map<TopicPartition, OffsetAndMetadata> firstOffsets = new HashMap<>();
                 Map<TopicPartition, OffsetAndMetadata> lastOffsets = new HashMap<>();
                 for (ConsumerRecord<String, String> record : records) {
@@ -255,7 +256,6 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                     }
                     lastOffsets.put(topicPartition, new OffsetAndMetadata(record.offset() + 1));
                 }
-                pause();
                 try {
                     try {
                         lock.lock();
@@ -276,13 +276,13 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                     }
                     try {
                         lock.lock();
-                        if (partitionsAssigning) {//如果已经触发了重平衡，那么就不需要提交offsets了，可能会提交失败
+                        if (partitionsAssigned) {//如果已经触发了重平衡，那么就不需要提交offsets了，可能会提交失败
                             log.warn("分区已触发重平衡，需要重新拉取数据，本批数据未提交offsets");
                             continue;
                         }
                         consumer.commitSync(lastOffsets);
                     } catch (Exception e) {
-                        log.error("这批消息处理成功，但提交offsets失败 {}", e.getMessage());
+                        log.warn("这批消息处理成功，但提交offsets失败 {}", e.getMessage());
                     } finally {
                         lock.unlock();
                     }
@@ -360,7 +360,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                 //在消费者重新平衡完成后调用，这个方法在新分配的分区被分配给消费者之后调用。你可以在这里初始化资源或重置状态。
                 try {
                     lock.lock();
-                    partitionsAssigning = true;//标记分区重平衡，在commit offsets之前判断是否重新拉取数据
+                    partitionsAssigned = true;//标记分区重平衡，在commit offsets之前判断是否重新拉取数据
                     log.info("{} 分区平衡完毕，拿到了 {} 个分区 {}", config.get(ConsumerConfig.GROUP_ID_CONFIG), partitions.size(), partitions);
                     for (TopicPartition topicPartition : partitions) {
                         seekToCommitted(topicPartition);
@@ -378,7 +378,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                 ThreadUtil.sleep(1000 * 5);
                 try {
                     lock.lock();
-                    if (paused && partitionsAssigning == false) {
+                    if (pausePoll && partitionsAssigned == false) {
                         consumer.poll(0);//当暂停拉取消息时，调用poll，只是发心跳，不会将消息拉取回来，不会改变offsets
                     }
                 } finally {
@@ -430,8 +430,8 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
             config.clear();
             consumer = null;
             topics = null;
-            paused = false;
-            partitionsAssigning = false;
+            pausePoll = false;
+            partitionsAssigned = false;
             log.info("销毁消费者工具成功");
         } catch (Exception e) {
             log.warn("销毁消费者工具失败 {}", e.getMessage());
