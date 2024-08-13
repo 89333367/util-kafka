@@ -86,6 +86,7 @@
                                         <exclude>org/xerial/**</exclude>
                                         <exclude>win32/**</exclude>
                                         <exclude>kafka/kafka-version.properties</exclude>
+                                        <exclude>log4j.properties</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
