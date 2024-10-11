@@ -2,6 +2,7 @@ package sunyu.util;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.thread.ThreadUtil;
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import org.apache.kafka.clients.consumer.*;
@@ -12,6 +13,10 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -22,119 +27,13 @@ import java.util.concurrent.locks.ReentrantLock;
 public class KafkaConsumerUtil implements Serializable, Closeable {
     private Log log = LogFactory.get();
 
-    private volatile boolean run = true;//持续循环消费
-    private Properties config = new Properties();//消费者配置参数
-    private Consumer<String, String> consumer;//消费者
-    private List<String> topics;//消费主题集合
-    private volatile boolean pausePoll = false;//是否暂停拉取数据
-    private ReentrantLock lock = new ReentrantLock();
-    private volatile boolean partitionsAssigned = false;//是否触发了分区再平衡
+    private AtomicBoolean run = new AtomicBoolean(true);//代表当前消费者是否在运行状态
+    private Properties config = new Properties();//消费者参数配置
+    private Consumer<String, String> consumer;//消费者对象
+    private List<String> topics;//消费主题列表
+    private ReentrantLock lock = new ReentrantLock();//可重入互斥锁
+    private AtomicReference<Future> asyncTask = new AtomicReference<>(null);//异步执行对象
 
-    public interface ConsumerRecordCallback {
-        void exec(ConsumerRecord<String, String> record) throws Exception;
-    }
-
-    public interface ConsumerRecordsCallback {
-        void exec(ConsumerRecords<String, String> records) throws Exception;
-    }
-
-
-    /**
-     * 将偏移量修改到最后提交的offset
-     *
-     * @param topicPartition
-     */
-    private void seekToCommitted(TopicPartition topicPartition) {
-        try {
-            lock.lock();
-            OffsetAndMetadata offsetAndMetadata = consumer.committed(topicPartition);//当前组已提交的offset
-            if (offsetAndMetadata != null) {
-                //log.debug("seek 当前组的偏移量 {} {}", topicPartition, offsetAndMetadata);
-                consumer.seek(topicPartition, offsetAndMetadata.offset());
-            } else {
-                // 如果没有提交的偏移量，则可以选择从头开始或从末尾开始
-                //log.debug("seek 当前组的偏移量 {} {}", topicPartition, 0);
-                consumer.seek(topicPartition, 0); // 从头开始
-                // 或者 consumer.seek(topicPartition, consumer.endOffsets(topicPartition) + 1); // 从末尾开始
-            }
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    /**
-     * 将偏移量修改到最后提交的offset
-     */
-    private void seekToCommitted() {
-        try {
-            lock.lock();
-            for (TopicPartition topicPartition : consumer.assignment()) {
-                seekToCommitted(topicPartition);
-            }
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    /**
-     * seek偏移量到指定为止
-     *
-     * @param offsets
-     */
-    private void seekToOffsets(Map<TopicPartition, OffsetAndMetadata> offsets) {
-        try {
-            lock.lock();
-            for (Map.Entry<TopicPartition, OffsetAndMetadata> topicPartitionOffsetAndMetadata : offsets.entrySet()) {
-                TopicPartition topicPartition = topicPartitionOffsetAndMetadata.getKey();
-                OffsetAndMetadata offsetAndMetadata = topicPartitionOffsetAndMetadata.getValue();
-                consumer.seek(topicPartition, offsetAndMetadata.offset());
-            }
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    /**
-     * 获取消息
-     *
-     * @param pollTime 拉取消息时长
-     * @return
-     */
-    private ConsumerRecords<String, String> getRecords(long pollTime) {
-        try {
-            lock.lock();
-            partitionsAssigned = false;
-            return consumer.poll(pollTime);
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    /**
-     * 暂停拉取消息
-     */
-    private void pause() {
-        try {
-            lock.lock();
-            pausePoll = true;
-            consumer.pause(consumer.assignment().toArray(new TopicPartition[0]));
-        } finally {
-            lock.unlock();
-        }
-    }
-
-    /**
-     * 恢复拉取消息
-     */
-    private void resume() {
-        try {
-            lock.lock();
-            pausePoll = false;
-            consumer.resume(consumer.assignment().toArray(new TopicPartition[0]));
-        } finally {
-            lock.unlock();
-        }
-    }
 
     /**
      * 设置kafka地址
@@ -180,58 +79,109 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
         return this;
     }
 
+
+    /**
+     * 单条消息回调接口
+     */
+    public interface ConsumerRecordCallback {
+        void exec(ConsumerRecord<String, String> record) throws Exception;
+    }
+
+    /**
+     * 多条消息回调接口
+     */
+    public interface ConsumerRecordsCallback {
+        void exec(ConsumerRecords<String, String> records) throws Exception;
+    }
+
+
+    /**
+     * 取消异步调用，中断任务
+     */
+    private void cancelExec() {
+        Future task = asyncTask.get();
+        if (task != null) {
+            task.cancel(true);//中断任务
+            log.info("中断任务");
+        }
+    }
+
+
+    /**
+     * 重置读取偏移量
+     */
+    private void seekToOffset() {
+        //log.debug("重置读取偏移量 开始");
+        for (TopicPartition topicPartition : consumer.assignment()) {
+            seekToOffset(topicPartition);
+        }
+        //log.debug("重置读取偏移量 结束");
+    }
+
+    /**
+     * 重置读取偏移量
+     *
+     * @param topicPartition
+     */
+    private void seekToOffset(TopicPartition topicPartition) {
+        OffsetAndMetadata offsetAndMetadata = consumer.committed(topicPartition);//当前组已提交的offset
+        if (offsetAndMetadata != null) {
+            //log.debug("重置当前组的偏移量 {} {}", topicPartition, offsetAndMetadata);
+            consumer.seek(topicPartition, offsetAndMetadata.offset());
+        } else {
+            //log.debug("重置当前组的偏移量 {} {}", topicPartition, 0);
+            consumer.seek(topicPartition, 0); // 从头开始
+        }
+    }
+
+
     /**
      * 持续消费，一条条处理，如果回调方法抛出异常，则不会提交offset，出现异常那条消息会重新消费
      *
      * @param callback 回调处理一条消息
      */
     public void pollRecord(ConsumerRecordCallback callback) {
-        while (run) {
-            ConsumerRecords<String, String> records = getRecords(100);
-            if (records != null && records.count() > 0) {
-                pause();
-                for (ConsumerRecord<String, String> record : records) {
-                    Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-                    TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
+        while (run.get()) {
+            ConsumerRecords<String, String> records;
+            try {
+                lock.lock();
+                seekToOffset();
+                records = consumer.poll(100);
+            } finally {
+                lock.unlock();
+            }
+            //log.debug("拉取到 {} 条数据", records.count());
+            if (records.isEmpty()) {
+                ThreadUtil.sleep(100);
+                continue;
+            }
+            for (ConsumerRecord<String, String> record : records) {
+                asyncTask.set(ThreadUtil.execAsync(() -> {
                     try {
-                        try {
-                            lock.lock();
-                            if (!run) {
-                                return;
-                            }
-                        } finally {
-                            lock.unlock();
-                        }
-                        callback.exec(record);//单条消息回调
-                        try {
-                            lock.lock();
-                            if (!run) {
-                                return;
-                            }
-                        } finally {
-                            lock.unlock();
-                        }
-                        try {
-                            lock.lock();
-                            if (partitionsAssigned) {//如果已经触发了重平衡，那么就不需要提交offsets了，可能会提交失败
-                                log.warn("分区已触发重平衡，需要重新拉取数据，本条数据未提交offset");
-                                break;
-                            }
-                            offsets.put(topicPartition, new OffsetAndMetadata(record.offset() + 1));
-                            consumer.commitSync(offsets);
-                        } catch (Exception e) {
-                            log.warn("这条消息处理成功，但提交offset失败 {} {}", record, e.getMessage());
-                        } finally {
-                            lock.unlock();
-                        }
+                        callback.exec(record);
                     } catch (Exception e) {
-                        log.error("这条消息处理出现异常，回退offset到处理前的偏移量 {}", e.getMessage());
-                        offsets.put(topicPartition, new OffsetAndMetadata(record.offset()));
-                        seekToOffsets(offsets);
-                        break;
+                        throw new RuntimeException(e);
                     }
+                }));
+                try {
+                    asyncTask.get().get();
+                    try {
+                        lock.lock();
+                        consumer.commitSync(new HashMap<TopicPartition, OffsetAndMetadata>() {{
+                            put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1));
+                        }});
+                    } finally {
+                        lock.unlock();
+                    }
+                } catch (CancellationException e) {
+                    log.warn("任务被中断");
+                    break;
+                } catch (Exception e) {
+                    log.error("消息处理出现异常 {} {}", e.getClass(), e.getMessage());
+                    break;
+                } finally {
+                    asyncTask.set(null);
                 }
-                resume();
             }
         }
     }
@@ -239,58 +189,49 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
     /**
      * 持续消费，一批批处理，如果回调方法抛出异常，则不会提交offset，这批消息会重新消费
      *
-     * @param pollTime 拉取消息等待时间(建议设置100毫秒)
+     * @param pollTime 拉取消息等待时间(建议设置100毫秒)，时间越长拉取数据会越多
      * @param callback 回调处理这一批消息
      */
     public void pollRecords(long pollTime, ConsumerRecordsCallback callback) {
-        while (run) {
-            ConsumerRecords<String, String> records = getRecords(pollTime);
-            if (records != null && records.count() > 0) {
-                pause();
-                Map<TopicPartition, OffsetAndMetadata> firstOffsets = new HashMap<>();
-                Map<TopicPartition, OffsetAndMetadata> lastOffsets = new HashMap<>();
-                for (ConsumerRecord<String, String> record : records) {
-                    TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
-                    if (!firstOffsets.containsKey(topicPartition)) {
-                        firstOffsets.put(topicPartition, new OffsetAndMetadata(record.offset()));
-                    }
-                    lastOffsets.put(topicPartition, new OffsetAndMetadata(record.offset() + 1));
-                }
+        while (run.get()) {
+            ConsumerRecords<String, String> records;
+            try {
+                lock.lock();
+                seekToOffset();
+                records = consumer.poll(pollTime);
+            } finally {
+                lock.unlock();
+            }
+            //log.debug("拉取到 {} 条数据", records.count());
+            if (records.isEmpty()) {
+                ThreadUtil.sleep(100);
+                continue;
+            }
+            Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+            for (ConsumerRecord<String, String> record : records) {
+                offsets.put(new TopicPartition(record.topic(), record.partition()), new OffsetAndMetadata(record.offset() + 1));
+            }
+            asyncTask.set(ThreadUtil.execAsync(() -> {
                 try {
-                    try {
-                        lock.lock();
-                        if (!run) {
-                            return;
-                        }
-                    } finally {
-                        lock.unlock();
-                    }
-                    callback.exec(records);//批量消息回调
-                    try {
-                        lock.lock();
-                        if (!run) {
-                            return;
-                        }
-                    } finally {
-                        lock.unlock();
-                    }
-                    try {
-                        lock.lock();
-                        if (partitionsAssigned) {//如果已经触发了重平衡，那么就不需要提交offsets了，可能会提交失败
-                            log.warn("分区已触发重平衡，需要重新拉取数据，本批数据未提交offsets");
-                            continue;
-                        }
-                        consumer.commitSync(lastOffsets);
-                    } catch (Exception e) {
-                        log.warn("这批消息处理成功，但提交offsets失败 {}", e.getMessage());
-                    } finally {
-                        lock.unlock();
-                    }
+                    callback.exec(records);
                 } catch (Exception e) {
-                    log.error("这批消息处理出现异常，回退offsets到处理前的偏移量 {}", e.getMessage());
-                    seekToOffsets(firstOffsets);
+                    throw new RuntimeException(e);
                 }
-                resume();
+            }));
+            try {
+                asyncTask.get().get();
+                try {
+                    lock.lock();
+                    consumer.commitSync(offsets);
+                } finally {
+                    lock.unlock();
+                }
+            } catch (CancellationException e) {
+                log.warn("任务被中断");
+            } catch (Exception e) {
+                log.error("批量消息处理出现异常 {} {}", e.getClass(), e.getMessage());
+            } finally {
+                asyncTask.set(null);
             }
         }
     }
@@ -325,9 +266,8 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
             return this;
         }
 
-        if (!config.containsKey(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG)) {
-            config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        }
+        config.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);//禁用自动提交
         if (!config.containsKey(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)) {
             config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
         }
@@ -343,49 +283,57 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
             @Override
             public void onPartitionsRevoked(Collection<TopicPartition> partitions) {
                 //在消费者重新平衡开始时调用，这个方法在分区被撤销之前调用。你可以在这里提交偏移量或者执行其他清理工作。
-                try {
-                    lock.lock();
-                    if (CollUtil.isNotEmpty(partitions)) {
-                        log.info("{} 触发分区重平衡，平衡前拥有 {} 个分区 {}", config.get(ConsumerConfig.GROUP_ID_CONFIG), partitions.size(), partitions);
-                    } else {
-                        log.info("{} 进行分区平衡", config.get(ConsumerConfig.GROUP_ID_CONFIG));
-                    }
-                } finally {
-                    lock.unlock();
+                log.debug("onPartitionsRevoked 开始");
+                cancelExec();//取消异步调用
+                lock.lock();
+                if (CollUtil.isNotEmpty(partitions)) {
+                    log.info("{} 触发分区重平衡，平衡前拥有 {} 个分区 {}", config.get(ConsumerConfig.GROUP_ID_CONFIG), partitions.size(), partitions);
+                } else {
+                    log.info("{} 进行分区平衡", config.get(ConsumerConfig.GROUP_ID_CONFIG));
                 }
+                log.debug("onPartitionsRevoked 结束");
             }
 
             @Override
             public void onPartitionsAssigned(Collection<TopicPartition> partitions) {
                 //在消费者重新平衡完成后调用，这个方法在新分配的分区被分配给消费者之后调用。你可以在这里初始化资源或重置状态。
-                try {
-                    lock.lock();
-                    partitionsAssigned = true;//标记分区重平衡，在commit offsets之前判断是否重新拉取数据
-                    log.info("{} 分区平衡完毕，拿到了 {} 个分区 {}", config.get(ConsumerConfig.GROUP_ID_CONFIG), partitions.size(), partitions);
-                    for (TopicPartition topicPartition : partitions) {
-                        seekToCommitted(topicPartition);
-                    }
-                } finally {
-                    lock.unlock();
-                }
+                log.debug("onPartitionsAssigned 开始");
+                log.info("{} 分区平衡完毕，拿到了 {} 个分区 {}", config.get(ConsumerConfig.GROUP_ID_CONFIG), partitions.size(), partitions);
+                lock.unlock();
+                log.debug("onPartitionsAssigned 结束");
             }
         });
 
         //维持心跳，避免消息处理超时导致重平衡
         log.info("为消费者扩展心跳机制，维持心跳避免消息处理时间过长导致重平衡");
         ThreadUtil.execute(() -> {
-            while (run) {
+            while (run.get()) {
                 ThreadUtil.sleep(1000 * 5);
                 try {
                     lock.lock();
-                    if (pausePoll && partitionsAssigned == false) {
-                        consumer.poll(0);//当暂停拉取消息时，调用poll，只是发心跳，不会将消息拉取回来，不会改变offsets
+                    consumer.pause(consumer.assignment().toArray(new TopicPartition[0]));
+                    //log.debug("维持心跳");
+                    ConsumerRecords<String, String> records = consumer.poll(0);
+                    int count = records.count();
+                    if (count > 0) {
+                        log.warn("不应该走到这里，会丢失 {} 条数据", count);
+                        Set<TopicPartition> topicPartitionSet = new HashSet<>();
+                        for (ConsumerRecord<String, String> record : records) {
+                            topicPartitionSet.add(new TopicPartition(record.topic(), record.partition()));
+                        }
+                        log.info("重置拉取偏移量，避免丢失数据 开始");
+                        for (TopicPartition topicPartition : topicPartitionSet) {
+                            seekToOffset(topicPartition);
+                        }
+                        log.info("重置拉取偏移量，避免丢失数据 完毕");
                     }
+                    consumer.resume(consumer.assignment().toArray(new TopicPartition[0]));
                 } finally {
                     lock.unlock();
                 }
             }
         });
+
         log.info("构建消费者工具完毕");
         return this;
     }
@@ -400,7 +348,8 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
         //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
         //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
         //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
-        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        config.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);//禁用自动提交
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
@@ -415,29 +364,25 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
      */
     @Override
     public void close() {
+        cancelExec();//取消异步调用
+        run.set(false);
+        log.info("销毁消费者工具开始");
         try {
-            lock.lock();
-            log.info("销毁消费者工具开始");
-            run = false;
+            log.info("关闭消费者对象开始");
             try {
-                log.info("关闭消费者对象开始");
+                lock.lock();
                 consumer.close();
-                log.info("关闭消费者对象成功");
-            } catch (Exception e) {
-                log.warn("关闭消费者对象失败 {}", e.getMessage());
+            } finally {
+                lock.unlock();
             }
-            //后面重新初始化，有可能会调用close后重新build再使用
-            config.clear();
-            consumer = null;
-            topics = null;
-            pausePoll = false;
-            partitionsAssigned = false;
-            log.info("销毁消费者工具成功");
+            log.info("关闭消费者对象成功");
         } catch (Exception e) {
-            log.warn("销毁消费者工具失败 {}", e.getMessage());
-        } finally {
-            lock.unlock();
+            log.warn("关闭消费者对象失败 {}", e.getMessage());
         }
+        config.clear();
+        consumer = null;
+        topics = null;
+        log.info("销毁消费者工具完毕");
     }
 
 }

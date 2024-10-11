@@ -73,7 +73,7 @@ public class TestOffset {
     @Test
     void t007() {
         Properties config = new Properties();
-        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka005:9092,kafka015:9092,kafka016:9092");
         config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_kafka_consumer_util");
         config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
@@ -83,5 +83,16 @@ public class TestOffset {
                 .build(config);
         kafkaOffsetUtil.showPartitions("GENERAL_MSG");
         kafkaOffsetUtil.close();
+    }
+
+    @Test
+    void t008() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .build();
+        for (int i = 0; i < 10; i++) {
+            kafkaOffsetUtil.seekToBeginning("GENERAL_MSG", i);
+        }
     }
 }

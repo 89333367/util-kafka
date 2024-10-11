@@ -5,9 +5,14 @@ import cn.hutool.cron.CronUtil;
 import cn.hutool.cron.task.Task;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.TopicPartition;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class Tests {
     Log log = LogFactory.get();
@@ -58,4 +63,25 @@ public class Tests {
 
         ThreadUtil.sleep(1000000);
     }
+
+    @Test
+    void t004() {
+        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+        offsets.put(new TopicPartition("t", 0), new OffsetAndMetadata(0 + 1));
+        offsets.put(new TopicPartition("t", 0), new OffsetAndMetadata(1 + 1));
+        offsets.put(new TopicPartition("t", 1), new OffsetAndMetadata(0 + 1));
+        log.info("{}", offsets);
+        log.info("{}", offsets.size());
+    }
+
+    @Test
+    void t005() {
+        LinkedBlockingQueue<String> q = new LinkedBlockingQueue<>();
+        q.offer("1");
+        q.offer("2");
+        log.info("{}", q.size());
+        q.clear();
+        log.info("{}", q.size());
+    }
+
 }

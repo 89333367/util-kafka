@@ -20,9 +20,9 @@ public class TestConsumer {
     @Test
     void t001() {
         KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
-                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
                 .groupId("test_group_kafka_consumer_util")
-                .topics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+                .topics(Arrays.asList("GENERAL_MSG"))
                 .build();
         //持续消费，一条一条处理，处理完毕后，只要不抛异常，会自动提交offset
         kafkaConsumerUtil.pollRecord((record) -> {
@@ -32,25 +32,33 @@ public class TestConsumer {
             //record.partition();
             //record.key();
             //record.value();
-            ThreadUtil.sleep(5000);
-            log.debug("处理完毕 {}", record);
+            ThreadUtil.sleep(1000 * 31);
+            //throw new Exception("处理消息出错啦啦啦啦啦啦啦");
+            //kafkaConsumerUtil.close();
         });
     }
 
     @Test
     void t002() {
         KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
-                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
                 .groupId("test_group_kafka_consumer_util")
-                .topics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
+                .topics(Arrays.asList("GENERAL_MSG"))
                 .build();
         //持续消费，一批一批处理，处理完毕后，只要不抛异常，会自动提交offset
         kafkaConsumerUtil.pollRecords(100, records -> {
-            log.debug("本批拉取了 {} 条消息", records);
+            log.debug("本批拉取了 {} 条消息", records.count());
+            ConsumerRecord<String, String> first = null, last = null;
             for (ConsumerRecord<String, String> record : records) {
-                log.debug("{}", record);
-                ThreadUtil.sleep(5000);//模拟record处理时间
+                if (first == null) {
+                    first = record;
+                }
+                last = record;
             }
+            ThreadUtil.sleep(1000 * 10);//模拟record处理时间
+            log.info("第一条 {}", first);
+            log.info("最后一条 {}", last);
+            //kafkaConsumerUtil.close();
         });
     }
 
@@ -92,7 +100,7 @@ public class TestConsumer {
                 .groupId("test_group_kafka_consumer_util")
                 .build();
         kafkaConsumerUtil.pollRecords(100, consumerRecords -> {
-            log.info("拉取了 {} 条", consumerRecords.count());
+            //log.info("拉取了 {} 条", consumerRecords.count());
             log.info("第一个offsets {}", consumerRecords.iterator().next());
             ConsumerRecord<String, String> last = null;
             for (ConsumerRecord<String, String> consumerRecord : consumerRecords) {
@@ -155,6 +163,20 @@ public class TestConsumer {
             ThreadUtil.sleep(1000 * 1);
             log.info("处理完毕 {}", consumerRecord);
             i.incrementAndGet();
+        });
+    }
+
+
+    @Test
+    void t009() {
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+                .bootstrapServers("172.16.1.5:9092,172.16.1.15:9092,172.16.1.16:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topics(Arrays.asList("APP_NOTIFY_NJ_G4"))
+                .build();
+        //持续消费，一条一条处理，处理完毕后，只要不抛异常，会自动提交offset
+        kafkaConsumerUtil.pollRecord((record) -> {
+            log.debug("收到消息 {}", record);
         });
     }
 
