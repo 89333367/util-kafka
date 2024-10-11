@@ -17,7 +17,7 @@
 <dependency>
     <groupId>sunyu.util</groupId>
     <artifactId>util-kafka</artifactId>
-    <version>kafka-clients-0.9.0.1_v1.0</version>
+    <version>kafka-clients-0.9.0.1_v2.0</version>
 </dependency>
 ```
 
