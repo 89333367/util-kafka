@@ -1,5 +1,6 @@
 package sunyu.util;
 
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -157,6 +158,7 @@ public class KafkaProducerUtil implements Serializable, Closeable {
             return this;
         }
 
+        config.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
         if (!config.containsKey(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG)) {
             config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         }
@@ -177,6 +179,7 @@ public class KafkaProducerUtil implements Serializable, Closeable {
 
     public KafkaProducerUtil build() {
         //config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+        config.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
         config.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         config.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
 

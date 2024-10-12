@@ -1,5 +1,6 @@
 package sunyu.util;
 
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -157,9 +158,8 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
 
     public KafkaOffsetUtil build(Properties config) {
         log.info("构建偏移量工具开始");
-        if (!config.containsKey(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG)) {
-            config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        }
+        config.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
         if (!config.containsKey(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)) {
             config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
         }
@@ -184,6 +184,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
         //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
         //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
         config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        config.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
         config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
