@@ -129,11 +129,19 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
             //log.debug("重置当前组的偏移量 {} {}", topicPartition, offsetAndMetadata);
             consumer.seek(topicPartition, offsetAndMetadata.offset());
         } else {
-            //log.debug("重置当前组的偏移量 {} {}", topicPartition, 0);
-            consumer.seek(topicPartition, 0); // 从头开始
+            // 如果没有提交的偏移量，尝试获取当前的偏移量
+            long currentOffset = consumer.position(topicPartition);
+            if (currentOffset >= 0) {
+                // 如果能够获取当前的偏移量，就使用当前的偏移量
+                consumer.seek(topicPartition, currentOffset);
+            } else {
+                // 如果无法获取当前的偏移量，就从最早的消息开始读取
+                // 注意：在0.9.0.1版本中，我们不能直接获取最早的偏移量，所以这里使用了一个假设的最早偏移量0
+                //log.debug("重置当前组的偏移量 {} {}", topicPartition, 0);
+                consumer.seek(topicPartition, 0);
+            }
         }
     }
-
 
     /**
      * 持续消费，一条条处理，如果回调方法抛出异常，则不会提交offset，出现异常那条消息会重新消费
