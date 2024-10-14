@@ -1,6 +1,7 @@
 package sunyu.util.test;
 
 import cn.hutool.core.thread.ThreadUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -10,8 +11,11 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import sunyu.util.KafkaConsumerUtil;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestConsumer {
@@ -185,5 +189,35 @@ public class TestConsumer {
         log.info("info");
         log.debug("debug");
         log.warn("warn");
+    }
+
+
+    @Test
+    void t010() {
+        List<Future> l = new ArrayList<>();
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topics(Arrays.asList("GENERAL_MSG"))
+                .build();
+        //持续消费，一批一批处理，处理完毕后，只要不抛异常，会自动提交offset
+        kafkaConsumerUtil.pollRecords(100, records -> {
+            log.debug("本批拉取了 {} 条消息", records.count());
+            for (ConsumerRecord<String, String> record : records) {
+                if (l.size() == 10) {
+                    for (Future f : l) {
+                        f.get();
+                    }
+                    l.clear();
+                    log.info("------------");
+                }
+                l.add(ThreadUtil.execAsync(() -> {
+                    log.info("{}", record);
+                    ThreadUtil.sleep(1000);
+                    throw new RuntimeException(StrUtil.format("{} {} {} 出错了", record.topic(), record.partition(), record.offset()));
+                }));
+            }
+            //kafkaConsumerUtil.close();
+        });
     }
 }
