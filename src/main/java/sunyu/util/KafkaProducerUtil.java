@@ -11,7 +11,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.Properties;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
 /**
@@ -20,10 +19,10 @@ import java.util.concurrent.Future;
  * @author 孙宇
  */
 public class KafkaProducerUtil implements Serializable, Closeable {
-    private Log log = LogFactory.get();
+    private final Log log = LogFactory.get();
 
 
-    private Properties config = new Properties();
+    private final Properties config = new Properties();
     private Producer<String, String> producer;
 
     public interface ProducerCallback {
@@ -86,10 +85,6 @@ public class KafkaProducerUtil implements Serializable, Closeable {
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
         try {
             producer.send(record).get();
-        } catch (InterruptedException e) {
-            log.error(e);
-        } catch (ExecutionException e) {
-            log.error(e);
         } catch (Exception e) {
             log.error(e);
         }
@@ -113,10 +108,6 @@ public class KafkaProducerUtil implements Serializable, Closeable {
                     log.error(e);
                 }
             }).get();
-        } catch (InterruptedException e) {
-            log.error(e);
-        } catch (ExecutionException e) {
-            log.error(e);
         } catch (Exception e) {
             log.error(e);
         }

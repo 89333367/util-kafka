@@ -25,14 +25,14 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author 孙宇
  */
 public class KafkaConsumerUtil implements Serializable, Closeable {
-    private Log log = LogFactory.get();
+    private final Log log = LogFactory.get();
 
-    private AtomicBoolean run = new AtomicBoolean(true);//代表当前消费者是否在运行状态
-    private Properties config = new Properties();//消费者参数配置
+    private final AtomicBoolean run = new AtomicBoolean(true);//代表当前消费者是否在运行状态
+    private final Properties config = new Properties();//消费者参数配置
     private Consumer<String, String> consumer;//消费者对象
     private List<String> topics;//消费主题列表
-    private ReentrantLock lock = new ReentrantLock();//可重入互斥锁
-    private AtomicReference<Future> asyncTask = new AtomicReference<>(null);//异步执行对象
+    private final ReentrantLock lock = new ReentrantLock();//可重入互斥锁
+    private final AtomicReference<Future> asyncTask = new AtomicReference<>(null);//异步执行对象
 
 
     /**
@@ -75,7 +75,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
      * @return
      */
     public KafkaConsumerUtil topic(String topic) {
-        topics = Arrays.asList(topic);
+        topics = Collections.singletonList(topic);
         return this;
     }
 

@@ -21,10 +21,10 @@ import java.util.*;
  * @author 孙宇
  */
 public class KafkaOffsetUtil implements Serializable, Closeable {
-    private Log log = LogFactory.get();
+    private final Log log = LogFactory.get();
 
 
-    private Properties config = new Properties();
+    private final Properties config = new Properties();
 
     /**
      * 设置kafka地址
@@ -59,7 +59,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
     public void seek(String topic, int partition, long offset) {
         KafkaConsumer<Object, Object> consumer = new KafkaConsumer<>(config);
         TopicPartition topicPartition = new TopicPartition(topic, partition);
-        consumer.assign(Arrays.asList(topicPartition));
+        consumer.assign(Collections.singletonList(topicPartition));
         consumer.seek(topicPartition, offset);
         Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
         offsets.put(topicPartition, new OffsetAndMetadata(offset));
@@ -76,7 +76,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
     public void seekToEnd(String topic, int partition) {
         KafkaConsumer<Object, Object> consumer = new KafkaConsumer<>(config);
         TopicPartition topicPartition = new TopicPartition(topic, partition);
-        consumer.assign(Arrays.asList(topicPartition));
+        consumer.assign(Collections.singletonList(topicPartition));
         consumer.seekToEnd(topicPartition);
         Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
         long offset = consumer.position(topicPartition);
@@ -94,7 +94,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
     public void seekToBeginning(String topic, int partition) {
         KafkaConsumer<Object, Object> consumer = new KafkaConsumer<>(config);
         TopicPartition topicPartition = new TopicPartition(topic, partition);
-        consumer.assign(Arrays.asList(topicPartition));
+        consumer.assign(Collections.singletonList(topicPartition));
         consumer.seekToBeginning(topicPartition);
         Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
         long offset = consumer.position(topicPartition);
@@ -112,7 +112,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
     public void showOffsets(String topic, int partition) {
         KafkaConsumer<Object, Object> consumer = new KafkaConsumer<>(config);
         TopicPartition topicPartition = new TopicPartition(topic, partition);
-        consumer.assign(Arrays.asList(topicPartition));
+        consumer.assign(Collections.singletonList(topicPartition));
         consumer.seekToBeginning(topicPartition);
         long offset = consumer.position(topicPartition);
         log.info("EARLIEST offset {} {} {}", topic, partition, offset);
