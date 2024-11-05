@@ -214,7 +214,6 @@ void 构建传参() {
 ### kafka偏移量使用
 
 ```java
-
 @Test
 void t001() {
     KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
@@ -222,7 +221,7 @@ void t001() {
             .groupId("test_group_kafka_consumer_util")
             .build();
     //重新调整某主题，某个分区的偏移量
-    kafkaOffsetUtil.seek("US_GENERAL", 0, 7927573);
+    kafkaOffsetUtil.seek("GENERAL_MSG", 0, 17236000);
 }
 
 
@@ -233,7 +232,7 @@ void t002() {
             .groupId("test_group_kafka_consumer_util")
             .build();
     //将某主题，某个分区的偏移量调整到最后
-    kafkaOffsetUtil.seekToEnd("US_GENERAL", 0);
+    kafkaOffsetUtil.seekToEnd("GENERAL_MSG", 0);
 }
 
 @Test
@@ -253,7 +252,7 @@ void t004() {
             .groupId("test_group_kafka_consumer_util")
             .build();
     //控制台debug查看某主题，某分区的偏移量情况
-    kafkaOffsetUtil.showOffsets("US_GENERAL", 0);
+    kafkaOffsetUtil.offsetLatest("US_GENERAL").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
 }
 
 @Test
@@ -262,13 +261,24 @@ void t005() {
             .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
             .groupId("test_group_kafka_consumer_util")
             .build();
-    kafkaOffsetUtil.showPartitions("US_GENERAL");
+    kafkaOffsetUtil.offsetEarliest("US_GENERAL").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
 }
+
+
+@Test
+void t006() {
+    KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+            .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+            .groupId("test_group_kafka_consumer_util")
+            .build();
+    kafkaOffsetUtil.offsetCurrent("US_GENERAL").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+}
+
 
 @Test
 void t007() {
     Properties config = new Properties();
-    config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+    config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka005:9092,kafka015:9092,kafka016:9092");
     config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_kafka_consumer_util");
     config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
     config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
@@ -276,7 +286,20 @@ void t007() {
     config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
             .build(config);
-    kafkaOffsetUtil.showPartitions("GENERAL_MSG");
+
+    // todo code
+
     kafkaOffsetUtil.close();
+}
+
+@Test
+void t008() {
+    KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+            .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+            .groupId("test_group_kafka_consumer_util")
+            .build();
+    for (int i = 0; i < 10; i++) {
+        kafkaOffsetUtil.seekToBeginning("GENERAL_MSG", i);
+    }
 }
 ```

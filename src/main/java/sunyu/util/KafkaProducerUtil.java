@@ -8,7 +8,6 @@ import org.apache.kafka.clients.producer.*;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.Properties;
 import java.util.concurrent.Future;
@@ -228,8 +227,6 @@ public class KafkaProducerUtil implements Serializable, Closeable {
 
     /**
      * 释放资源
-     *
-     * @throws IOException
      */
     @Override
     public void close() {
@@ -248,8 +245,6 @@ public class KafkaProducerUtil implements Serializable, Closeable {
         } catch (Exception e) {
             log.warn("关闭生产者失败 {}", e.getMessage());
         }
-        config.clear();
-        producer = null;
         log.info("销毁构建生产者工具完毕");
     }
 

@@ -32,7 +32,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
     private Consumer<String, String> consumer;//消费者对象
     private List<String> topics;//消费主题列表
     private final ReentrantLock lock = new ReentrantLock();//可重入互斥锁
-    private final AtomicReference<Future> asyncTask = new AtomicReference<>(null);//异步执行对象
+    private final AtomicReference<Future<?>> asyncTask = new AtomicReference<>(null);//异步执行对象
 
 
     /**
@@ -99,7 +99,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
      * 取消异步调用，中断任务
      */
     private void cancelExec() {
-        Future task = asyncTask.get();
+        Future<?> task = asyncTask.get();
         if (task != null) {
             task.cancel(true);//中断任务
             log.info("中断任务");
@@ -138,7 +138,9 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                 // 如果无法获取当前的偏移量，就从最早的消息开始读取
                 // 注意：在0.9.0.1版本中，我们不能直接获取最早的偏移量，所以这里使用了一个假设的最早偏移量0
                 //log.debug("重置当前组的偏移量 {} {}", topicPartition, 0);
-                consumer.seek(topicPartition, 0);
+                //consumer.seek(topicPartition, 0);
+                // 将偏移量设置到当前partition的最初
+                consumer.seekToBeginning(topicPartition);
             }
         }
     }
@@ -325,12 +327,8 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                     int count = records.count();
                     if (count > 0) {
                         log.warn("不应该走到这里，会丢失 {} 条数据", count);
-                        Set<TopicPartition> topicPartitionSet = new HashSet<>();
-                        for (ConsumerRecord<String, String> record : records) {
-                            topicPartitionSet.add(new TopicPartition(record.topic(), record.partition()));
-                        }
                         log.info("重置拉取偏移量，避免丢失数据 开始");
-                        for (TopicPartition topicPartition : topicPartitionSet) {
+                        for (TopicPartition topicPartition : records.partitions()) {
                             seekToOffset(topicPartition);
                         }
                         log.info("重置拉取偏移量，避免丢失数据 完毕");
@@ -387,9 +385,6 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
         } catch (Exception e) {
             log.warn("关闭消费者对象失败 {}", e.getMessage());
         }
-        config.clear();
-        consumer = null;
-        topics = null;
         log.info("销毁消费者工具完毕");
     }
 

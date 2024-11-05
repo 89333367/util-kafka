@@ -1,5 +1,7 @@
 package sunyu.util.test;
 
+import cn.hutool.log.Log;
+import cn.hutool.log.LogFactory;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -9,6 +11,8 @@ import sunyu.util.KafkaOffsetUtil;
 import java.util.Properties;
 
 public class TestOffset {
+    Log log = LogFactory.get();
+
     @Test
     void t001() {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
@@ -47,7 +51,7 @@ public class TestOffset {
                 .groupId("test_group_kafka_consumer_util")
                 .build();
         //控制台debug查看某主题，某分区的偏移量情况
-        kafkaOffsetUtil.showOffsets("US_GENERAL", 0);
+        kafkaOffsetUtil.offsetLatest("US_GENERAL").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
     }
 
     @Test
@@ -56,7 +60,7 @@ public class TestOffset {
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .groupId("test_group_kafka_consumer_util")
                 .build();
-        kafkaOffsetUtil.showPartitions("US_GENERAL_NJ");
+        kafkaOffsetUtil.offsetEarliest("US_GENERAL").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
     }
 
 
@@ -66,7 +70,7 @@ public class TestOffset {
                 .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
                 .groupId("test_group_kafka_consumer_util")
                 .build();
-        kafkaOffsetUtil.showPartitions("GENERAL_MSG");
+        kafkaOffsetUtil.offsetCurrent("US_GENERAL").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
     }
 
 
@@ -81,7 +85,9 @@ public class TestOffset {
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .build(config);
-        kafkaOffsetUtil.showPartitions("GENERAL_MSG");
+
+        // todo code
+
         kafkaOffsetUtil.close();
     }
 

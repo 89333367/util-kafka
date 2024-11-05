@@ -3,10 +3,7 @@ package sunyu.util;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -57,7 +54,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
      * @param offset    偏移量
      */
     public void seek(String topic, int partition, long offset) {
-        KafkaConsumer<Object, Object> consumer = new KafkaConsumer<>(config);
+        Consumer<Object, Object> consumer = new KafkaConsumer<>(config);
         TopicPartition topicPartition = new TopicPartition(topic, partition);
         consumer.assign(Collections.singletonList(topicPartition));
         consumer.seek(topicPartition, offset);
@@ -74,7 +71,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
      * @param partition 分区号
      */
     public void seekToEnd(String topic, int partition) {
-        KafkaConsumer<Object, Object> consumer = new KafkaConsumer<>(config);
+        Consumer<Object, Object> consumer = new KafkaConsumer<>(config);
         TopicPartition topicPartition = new TopicPartition(topic, partition);
         consumer.assign(Collections.singletonList(topicPartition));
         consumer.seekToEnd(topicPartition);
@@ -92,7 +89,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
      * @param partition 分区号
      */
     public void seekToBeginning(String topic, int partition) {
-        KafkaConsumer<Object, Object> consumer = new KafkaConsumer<>(config);
+        Consumer<Object, Object> consumer = new KafkaConsumer<>(config);
         TopicPartition topicPartition = new TopicPartition(topic, partition);
         consumer.assign(Collections.singletonList(topicPartition));
         consumer.seekToBeginning(topicPartition);
@@ -104,41 +101,95 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
     }
 
     /**
-     * 显示offset情况
+     * 获得最初的offset
      *
-     * @param topic     主题
-     * @param partition 分区号
+     * @param topic
+     * @return
      */
-    public void showOffsets(String topic, int partition) {
-        KafkaConsumer<Object, Object> consumer = new KafkaConsumer<>(config);
-        TopicPartition topicPartition = new TopicPartition(topic, partition);
-        consumer.assign(Collections.singletonList(topicPartition));
-        consumer.seekToBeginning(topicPartition);
-        long offset = consumer.position(topicPartition);
-        log.info("EARLIEST offset {} {} {}", topic, partition, offset);
-        OffsetAndMetadata committed = consumer.committed(topicPartition);
-        long committedOffset = (committed != null) ? committed.offset() : -1;
-        log.info("current group offset {} {} {}", topic, partition, committedOffset);
-        consumer.seekToEnd(topicPartition);
-        offset = consumer.position(topicPartition);
-        log.info("LATEST offset {} {} {}", topic, partition, offset);
+    public Map<TopicPartition, OffsetAndMetadata> offsetEarliest(String topic) {
+        Consumer<Object, Object> consumer = new KafkaConsumer<>(config);
+        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+        List<TopicPartition> partitions = new ArrayList<>();
+        List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
+        for (PartitionInfo partitionInfo : partitionInfos) {
+            TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
+            partitions.add(topicPartition);
+        }
+        consumer.assign(partitions);
+        for (TopicPartition topicPartition : partitions) {
+            consumer.seekToBeginning(topicPartition);
+            long offset = consumer.position(topicPartition);
+            //log.info("EARLIEST offset {} {} {}", topic, topicPartition.partition(), offset);
+            offsets.put(topicPartition, new OffsetAndMetadata(offset));
+        }
         consumer.close();
+        return offsets;
     }
 
     /**
-     * 显示主题的所有分区信息
+     * 获得最后的offset
      *
-     * @param topic 主题
+     * @param topic
+     * @return
      */
-    public void showPartitions(String topic) {
-        KafkaConsumer<Object, Object> consumer = new KafkaConsumer<>(config);
+    public Map<TopicPartition, OffsetAndMetadata> offsetLatest(String topic) {
+        Consumer<Object, Object> consumer = new KafkaConsumer<>(config);
+        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+        List<TopicPartition> partitions = new ArrayList<>();
         List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
         for (PartitionInfo partitionInfo : partitionInfos) {
-            log.info("{}", partitionInfo);
+            TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
+            partitions.add(topicPartition);
+        }
+        consumer.assign(partitions);
+        for (TopicPartition topicPartition : partitions) {
+            consumer.seekToEnd(topicPartition);
+            long offset = consumer.position(topicPartition);
+            //log.info("LATEST offset {} {} {}", topic, topicPartition.partition(), offset);
+            offsets.put(topicPartition, new OffsetAndMetadata(offset));
         }
         consumer.close();
+        return offsets;
     }
 
+    /**
+     * 获得当前的offset
+     *
+     * @param topic
+     * @return
+     */
+    public Map<TopicPartition, OffsetAndMetadata> offsetCurrent(String topic) {
+        Consumer<Object, Object> consumer = new KafkaConsumer<>(config);
+        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+        List<TopicPartition> partitions = new ArrayList<>();
+        List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
+        for (PartitionInfo partitionInfo : partitionInfos) {
+            TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
+            partitions.add(topicPartition);
+        }
+        consumer.assign(partitions);
+        for (TopicPartition topicPartition : partitions) {
+            OffsetAndMetadata committed = consumer.committed(topicPartition);
+            if (committed != null) {
+                //log.info("CURRENT group offset {} {} {}", topic, topicPartition.partition(), committed.offset());
+                offsets.put(topicPartition, new OffsetAndMetadata(committed.offset()));
+            } else {
+                if (config.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG).equalsIgnoreCase(OffsetResetStrategy.LATEST.name())) {
+                    consumer.seekToEnd(topicPartition);
+                    long offset = consumer.position(topicPartition);
+                    //log.info("LATEST offset {} {} {}", topic, topicPartition.partition(), offset);
+                    offsets.put(topicPartition, new OffsetAndMetadata(offset));
+                } else {
+                    consumer.seekToBeginning(topicPartition);
+                    long offset = consumer.position(topicPartition);
+                    //log.info("EARLIEST offset {} {} {}", topic, topicPartition.partition(), offset);
+                    offsets.put(topicPartition, new OffsetAndMetadata(offset));
+                }
+            }
+        }
+        consumer.close();
+        return offsets;
+    }
 
     /**
      * 私有构造函数，防止外部实例化
