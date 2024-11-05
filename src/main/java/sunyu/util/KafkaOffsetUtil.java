@@ -244,9 +244,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
 
     @Override
     public void close() {
-        log.info("销毁偏移量工具开始");
-        config.clear();
-        log.info("销毁偏移量工具成功");
+        log.info("销毁偏移量工具完毕");
     }
 
 
