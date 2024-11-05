@@ -101,4 +101,46 @@ public class TestOffset {
             kafkaOffsetUtil.seekToBeginning("GENERAL_MSG", i);
         }
     }
+
+
+    @Test
+    void t009() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("alter-farm-dev1")
+                .build();
+        //控制台debug查看某主题，某分区的偏移量情况
+        kafkaOffsetUtil.offsetLatest("FARM_WORK_OUTLINE").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+    }
+
+    @Test
+    void t010() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("alter-farm-dev1")
+                .build();
+        kafkaOffsetUtil.offsetEarliest("FARM_WORK_OUTLINE").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+    }
+
+
+    @Test
+    void t011() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("alter-farm-dev1")
+                .build();
+        kafkaOffsetUtil.offsetCurrent("FARM_WORK_OUTLINE").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+    }
+
+
+    @Test
+    void t012() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("alter-farm-dev1")
+                .build();
+        for (int i = 0; i < 4; i++) {
+            kafkaOffsetUtil.seekToBeginning("FARM_WORK_OUTLINE", i);
+        }
+    }
 }
