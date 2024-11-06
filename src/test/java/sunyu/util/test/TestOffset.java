@@ -1,13 +1,16 @@
 package sunyu.util.test;
 
+import cn.hutool.core.util.IdUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import sunyu.util.KafkaOffsetUtil;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 public class TestOffset {
@@ -142,5 +145,36 @@ public class TestOffset {
         for (int i = 0; i < 4; i++) {
             kafkaOffsetUtil.seekToBeginning("FARM_WORK_OUTLINE", i);
         }
+    }
+
+    @Test
+    void t013() {
+        String topic = "US_GENERAL";
+        Properties config = new Properties();
+        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+        config.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
+        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
+        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+        config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_commit_groupid");
+        Consumer<?, ?> consumer = new KafkaConsumer<>(config);
+        TopicPartition topicPartition = new TopicPartition(topic, 0);
+        /*consumer.assign(Collections.singletonList(topicPartition));
+        consumer.seek(topicPartition, 0);*/
+        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
+        offsets.put(topicPartition, new OffsetAndMetadata(123456));
+        consumer.commitSync(offsets);
+        consumer.close();
+    }
+
+
+    @Test
+    void t014() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_commit_groupid")
+                .build();
+        kafkaOffsetUtil.offsetCurrent("US_GENERAL").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
     }
 }
