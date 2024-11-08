@@ -11,7 +11,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.CancellationException;
@@ -188,7 +187,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                     log.warn("任务被中断");
                     break;
                 } catch (Exception e) {
-                    log.error("消息处理出现异常 {}", ExceptionUtil.stacktraceToString(e));
+                    log.error("单条处理消息异常 {}", ExceptionUtil.stacktraceToString(e));
                     break;
                 } finally {
                     asyncTask.set(null);
@@ -240,7 +239,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
             } catch (CancellationException e) {
                 log.warn("任务被中断");
             } catch (Exception e) {
-                log.error("批量消息处理出现异常 {}", ExceptionUtil.stacktraceToString(e));
+                log.error("批量处理消息异常 {}", ExceptionUtil.stacktraceToString(e));
             } finally {
                 asyncTask.set(null);
             }
@@ -366,8 +365,6 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
 
     /**
      * 停止消费，释放资源
-     *
-     * @throws IOException
      */
     @Override
     public void close() {
@@ -384,7 +381,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
             }
             log.info("关闭消费者对象成功");
         } catch (Exception e) {
-            log.warn("关闭消费者对象失败 {}", e.getMessage());
+            log.warn("关闭消费者对象失败 {}", ExceptionUtil.stacktraceToString(e));
         }
         log.info("销毁消费者工具完毕");
     }
