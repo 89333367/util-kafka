@@ -1,6 +1,7 @@
 package sunyu.util;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.exceptions.ExceptionUtil;
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.log.Log;
@@ -187,7 +188,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                     log.warn("任务被中断");
                     break;
                 } catch (Exception e) {
-                    log.error("消息处理出现异常 {} {}", e.getClass(), e.getMessage());
+                    log.error("消息处理出现异常 {} {}", e.getClass(), ExceptionUtil.stacktraceToString(e));
                     break;
                 } finally {
                     asyncTask.set(null);
@@ -239,7 +240,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
             } catch (CancellationException e) {
                 log.warn("任务被中断");
             } catch (Exception e) {
-                log.error("批量消息处理出现异常 {} {}", e.getClass(), e.getMessage());
+                log.error("批量消息处理出现异常 {} {}", e.getClass(), ExceptionUtil.stacktraceToString(e));
             } finally {
                 asyncTask.set(null);
             }
