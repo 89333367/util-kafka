@@ -1,5 +1,6 @@
 package sunyu.util;
 
+import cn.hutool.core.exceptions.ExceptionUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
@@ -68,7 +69,7 @@ public class KafkaProducerUtil implements Serializable, Closeable {
             try {
                 callback.exec(metadata, exception);
             } catch (Exception e) {
-                log.error(e);
+                log.error("异步发送消息异常 {}", ExceptionUtil.stacktraceToString(e));
             }
         });
     }
@@ -85,7 +86,7 @@ public class KafkaProducerUtil implements Serializable, Closeable {
         try {
             producer.send(record).get();
         } catch (Exception e) {
-            log.error(e);
+            log.error("同步发送消息异常 {}", ExceptionUtil.stacktraceToString(e));
         }
     }
 
@@ -104,11 +105,11 @@ public class KafkaProducerUtil implements Serializable, Closeable {
                 try {
                     callback.exec(metadata, exception);
                 } catch (Exception e) {
-                    log.error(e);
+                    log.error("同步发送消息异常 {}", ExceptionUtil.stacktraceToString(e));
                 }
             }).get();
         } catch (Exception e) {
-            log.error(e);
+            log.error("同步发送消息异常 {}", ExceptionUtil.stacktraceToString(e));
         }
     }
 
@@ -236,14 +237,14 @@ public class KafkaProducerUtil implements Serializable, Closeable {
             producer.flush();
             log.info("刷新数据成功");
         } catch (Exception e) {
-            log.error("刷新数据失败 {}", e.getMessage());
+            log.error("刷新数据失败 {}", ExceptionUtil.stacktraceToString(e));
         }
         try {
             log.info("关闭生产者开始");
             producer.close();
             log.info("关闭生产者成功");
         } catch (Exception e) {
-            log.warn("关闭生产者失败 {}", e.getMessage());
+            log.warn("关闭生产者失败 {}", ExceptionUtil.stacktraceToString(e));
         }
         log.info("销毁构建生产者工具完毕");
     }

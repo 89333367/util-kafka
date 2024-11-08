@@ -188,7 +188,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
                     log.warn("任务被中断");
                     break;
                 } catch (Exception e) {
-                    log.error("消息处理出现异常 {} {}", e.getClass(), ExceptionUtil.stacktraceToString(e));
+                    log.error("消息处理出现异常 {}", ExceptionUtil.stacktraceToString(e));
                     break;
                 } finally {
                     asyncTask.set(null);
@@ -240,7 +240,7 @@ public class KafkaConsumerUtil implements Serializable, Closeable {
             } catch (CancellationException e) {
                 log.warn("任务被中断");
             } catch (Exception e) {
-                log.error("批量消息处理出现异常 {} {}", e.getClass(), ExceptionUtil.stacktraceToString(e));
+                log.error("批量消息处理出现异常 {}", ExceptionUtil.stacktraceToString(e));
             } finally {
                 asyncTask.set(null);
             }
