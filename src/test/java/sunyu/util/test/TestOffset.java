@@ -21,9 +21,13 @@ public class TestOffset {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
                 .build();
         //重新调整某主题，某个分区的偏移量
         kafkaOffsetUtil.seek("GENERAL_MSG", 0, 17236000);
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
     }
 
 
@@ -32,9 +36,13 @@ public class TestOffset {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
                 .build();
         //将某主题，某个分区的偏移量调整到最后
         kafkaOffsetUtil.seekToEnd("GENERAL_MSG", 0);
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
     }
 
     @Test
@@ -42,9 +50,13 @@ public class TestOffset {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
                 .build();
         //将某主题，某个分区的偏移量调整到最前
-        kafkaOffsetUtil.seekToBeginning("US_GENERAL", 0);
+        kafkaOffsetUtil.seekToBeginning("GENERAL_MSG", 0);
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
     }
 
     @Test
@@ -52,9 +64,13 @@ public class TestOffset {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
                 .build();
         //控制台debug查看某主题，某分区的偏移量情况
-        kafkaOffsetUtil.offsetLatest("US_GENERAL").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+        kafkaOffsetUtil.offsetLatest().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
     }
 
     @Test
@@ -62,8 +78,12 @@ public class TestOffset {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
                 .build();
-        kafkaOffsetUtil.offsetEarliest("US_GENERAL").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+        kafkaOffsetUtil.offsetEarliest().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
     }
 
 
@@ -72,8 +92,12 @@ public class TestOffset {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
                 .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
                 .build();
-        kafkaOffsetUtil.offsetCurrent("US_GENERAL").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+        kafkaOffsetUtil.offsetCurrent().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
     }
 
 
@@ -87,6 +111,7 @@ public class TestOffset {
         config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .topic("GENERAL_MSG")
                 .build(config);
 
         // todo code
@@ -99,10 +124,14 @@ public class TestOffset {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
                 .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
                 .build();
         for (int i = 0; i < 10; i++) {
             kafkaOffsetUtil.seekToBeginning("GENERAL_MSG", i);
         }
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
     }
 
 
@@ -111,9 +140,13 @@ public class TestOffset {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .groupId("alter-farm-dev1")
+                .topic("GENERAL_MSG")
                 .build();
         //控制台debug查看某主题，某分区的偏移量情况
-        kafkaOffsetUtil.offsetLatest("FARM_WORK_OUTLINE").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+        kafkaOffsetUtil.offsetLatest().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
     }
 
     @Test
@@ -121,8 +154,12 @@ public class TestOffset {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .groupId("alter-farm-dev1")
+                .topic("GENERAL_MSG")
                 .build();
-        kafkaOffsetUtil.offsetEarliest("FARM_WORK_OUTLINE").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+        kafkaOffsetUtil.offsetEarliest().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
     }
 
 
@@ -131,8 +168,12 @@ public class TestOffset {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .groupId("alter-farm-dev1")
+                .topic("GENERAL_MSG")
                 .build();
-        kafkaOffsetUtil.offsetCurrent("FARM_WORK_OUTLINE").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+        kafkaOffsetUtil.offsetCurrent().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
     }
 
 
@@ -141,10 +182,14 @@ public class TestOffset {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .groupId("alter-farm-dev1")
+                .topic("GENERAL_MSG")
                 .build();
         for (int i = 0; i < 4; i++) {
-            kafkaOffsetUtil.seekToBeginning("FARM_WORK_OUTLINE", i);
+            kafkaOffsetUtil.seekToBeginning("GENERAL_MSG", i);
         }
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
     }
 
     @Test
@@ -160,8 +205,6 @@ public class TestOffset {
         config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_commit_groupid");
         Consumer<?, ?> consumer = new KafkaConsumer<>(config);
         TopicPartition topicPartition = new TopicPartition(topic, 0);
-        /*consumer.assign(Collections.singletonList(topicPartition));
-        consumer.seek(topicPartition, 0);*/
         Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
         offsets.put(topicPartition, new OffsetAndMetadata(123456));
         consumer.commitSync(offsets);
@@ -174,7 +217,39 @@ public class TestOffset {
         KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .groupId("test_commit_groupid")
+                .topic("GENERAL_MSG")
                 .build();
-        kafkaOffsetUtil.offsetCurrent("US_GENERAL").forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+        kafkaOffsetUtil.offsetCurrent().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
+    }
+
+    @Test
+    void t015() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_commit_groupid")
+                .topic("GENERAL_MSG")
+                .build();
+        for (TopicPartition topicPartition : kafkaOffsetUtil.getTopicPartitions()) {
+            log.info("{}", topicPartition);
+        }
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
+    }
+
+    @Test
+    void t016() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_commit_groupid")
+                .topic("GENERAL_MSG")
+                .build();
+        log.info("{}", kafkaOffsetUtil.getPartitions("GENERAL_MSG"));
+
+        //不在使用需要close
+        kafkaOffsetUtil.close();
     }
 }

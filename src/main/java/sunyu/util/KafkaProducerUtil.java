@@ -21,7 +21,6 @@ import java.util.concurrent.Future;
 public class KafkaProducerUtil implements Serializable, Closeable {
     private final Log log = LogFactory.get();
 
-
     private final Properties config = new Properties();
     private Producer<String, String> producer;
 

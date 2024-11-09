@@ -20,8 +20,10 @@ import java.util.*;
 public class KafkaOffsetUtil implements Serializable, Closeable {
     private final Log log = LogFactory.get();
 
-
     private final Properties config = new Properties();
+    private Consumer<String, String> consumer;//消费者对象
+    private List<String> topics;//消费主题列表
+    private final List<TopicPartition> topicPartitions = new ArrayList<>();
 
     /**
      * 设置kafka地址
@@ -45,6 +47,52 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
         return this;
     }
 
+    /**
+     * 设置topic集合
+     *
+     * @param topics 主题集合
+     * @return
+     */
+    public KafkaOffsetUtil topics(List<String> topics) {
+        this.topics = topics;
+        return this;
+    }
+
+    /**
+     * 设置topic
+     *
+     * @param topic 主题
+     * @return
+     */
+    public KafkaOffsetUtil topic(String topic) {
+        topics = Collections.singletonList(topic);
+        return this;
+    }
+
+    /**
+     * 获得主题与分区信息
+     *
+     * @return
+     */
+    public List<TopicPartition> getTopicPartitions() {
+        return topicPartitions;
+    }
+
+    /**
+     * 获取主题的分区信息
+     *
+     * @param topic
+     * @return
+     */
+    public TopicPartition getPartitions(String topic) {
+        for (TopicPartition topicPartition : topicPartitions) {
+            if (topicPartition.topic().equals(topic)) {
+                return topicPartition;
+            }
+        }
+        return null;
+    }
+
 
     /**
      * 调整偏移量
@@ -54,14 +102,11 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
      * @param offset    偏移量
      */
     public void seek(String topic, int partition, long offset) {
-        Consumer<?, ?> consumer = new KafkaConsumer<>(config);
         TopicPartition topicPartition = new TopicPartition(topic, partition);
-        consumer.assign(Collections.singletonList(topicPartition));
         consumer.seek(topicPartition, offset);
         Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
         offsets.put(topicPartition, new OffsetAndMetadata(offset));
         consumer.commitSync(offsets);
-        consumer.close();
     }
 
     /**
@@ -71,15 +116,12 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
      * @param partition 分区号
      */
     public void seekToEnd(String topic, int partition) {
-        Consumer<?, ?> consumer = new KafkaConsumer<>(config);
         TopicPartition topicPartition = new TopicPartition(topic, partition);
-        consumer.assign(Collections.singletonList(topicPartition));
         consumer.seekToEnd(topicPartition);
         Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
         long offset = consumer.position(topicPartition);
         offsets.put(topicPartition, new OffsetAndMetadata(offset));
         consumer.commitSync(offsets);
-        consumer.close();
     }
 
     /**
@@ -89,34 +131,22 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
      * @param partition 分区号
      */
     public void seekToBeginning(String topic, int partition) {
-        Consumer<?, ?> consumer = new KafkaConsumer<>(config);
         TopicPartition topicPartition = new TopicPartition(topic, partition);
-        consumer.assign(Collections.singletonList(topicPartition));
         consumer.seekToBeginning(topicPartition);
         Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
         long offset = consumer.position(topicPartition);
         offsets.put(topicPartition, new OffsetAndMetadata(offset));
         consumer.commitSync(offsets);
-        consumer.close();
     }
 
     /**
      * 获得最初的offset
      *
-     * @param topic
      * @return
      */
-    public Map<TopicPartition, OffsetAndMetadata> offsetEarliest(String topic) {
-        Consumer<?, ?> consumer = new KafkaConsumer<>(config);
+    public Map<TopicPartition, OffsetAndMetadata> offsetEarliest() {
         Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-        List<TopicPartition> partitions = new ArrayList<>();
-        List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
-        for (PartitionInfo partitionInfo : partitionInfos) {
-            TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
-            partitions.add(topicPartition);
-        }
-        consumer.assign(partitions);
-        for (TopicPartition topicPartition : partitions) {
+        for (TopicPartition topicPartition : topicPartitions) {
             consumer.seekToBeginning(topicPartition);
             long offset = consumer.position(topicPartition);
             //log.info("EARLIEST offset {} {} {}", topic, topicPartition.partition(), offset);
@@ -129,46 +159,27 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
     /**
      * 获得最后的offset
      *
-     * @param topic
      * @return
      */
-    public Map<TopicPartition, OffsetAndMetadata> offsetLatest(String topic) {
-        Consumer<?, ?> consumer = new KafkaConsumer<>(config);
+    public Map<TopicPartition, OffsetAndMetadata> offsetLatest() {
         Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-        List<TopicPartition> partitions = new ArrayList<>();
-        List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
-        for (PartitionInfo partitionInfo : partitionInfos) {
-            TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
-            partitions.add(topicPartition);
-        }
-        consumer.assign(partitions);
-        for (TopicPartition topicPartition : partitions) {
+        for (TopicPartition topicPartition : topicPartitions) {
             consumer.seekToEnd(topicPartition);
             long offset = consumer.position(topicPartition);
             //log.info("LATEST offset {} {} {}", topic, topicPartition.partition(), offset);
             offsets.put(topicPartition, new OffsetAndMetadata(offset));
         }
-        consumer.close();
         return offsets;
     }
 
     /**
      * 获得当前的offset
      *
-     * @param topic
      * @return
      */
-    public Map<TopicPartition, OffsetAndMetadata> offsetCurrent(String topic) {
-        Consumer<?, ?> consumer = new KafkaConsumer<>(config);
+    public Map<TopicPartition, OffsetAndMetadata> offsetCurrent() {
         Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-        List<TopicPartition> partitions = new ArrayList<>();
-        List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
-        for (PartitionInfo partitionInfo : partitionInfos) {
-            TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
-            partitions.add(topicPartition);
-        }
-        consumer.assign(partitions);
-        for (TopicPartition topicPartition : partitions) {
+        for (TopicPartition topicPartition : topicPartitions) {
             OffsetAndMetadata committed = consumer.committed(topicPartition);
             if (committed != null) {
                 //log.info("CURRENT group offset {} {} {}", topic, topicPartition.partition(), committed.offset());
@@ -187,7 +198,6 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
                 }
             }
         }
-        consumer.close();
         return offsets;
     }
 
@@ -221,6 +231,15 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
             config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
         }
         this.config.putAll(config);
+        consumer = new KafkaConsumer<>(config);
+        for (String topic : topics) {
+            List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
+            for (PartitionInfo partitionInfo : partitionInfos) {
+                TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
+                topicPartitions.add(topicPartition);
+            }
+        }
+        consumer.assign(topicPartitions);
         log.info("构建偏移量工具完毕");
         return this;
     }
@@ -244,6 +263,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
 
     @Override
     public void close() {
+        consumer.close();
         log.info("销毁偏移量工具完毕");
     }
 
