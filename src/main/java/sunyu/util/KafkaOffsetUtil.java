@@ -84,13 +84,14 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
      * @param topic
      * @return
      */
-    public TopicPartition getPartitions(String topic) {
+    public List<TopicPartition> getPartitions(String topic) {
+        List<TopicPartition> partitions = new ArrayList<>();
         for (TopicPartition topicPartition : topicPartitions) {
             if (topicPartition.topic().equals(topic)) {
-                return topicPartition;
+                partitions.add(topicPartition);
             }
         }
-        return null;
+        return partitions;
     }
 
 
