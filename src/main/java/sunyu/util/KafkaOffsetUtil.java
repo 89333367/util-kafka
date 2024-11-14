@@ -197,6 +197,23 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
                 }
             }
         }
+        // todo 修正offset，避免超出range
+        Map<TopicPartition, OffsetAndMetadata> earliest = offsetEarliest();
+        earliest.forEach((topicPartition, offsetAndMetadata) -> {
+            OffsetAndMetadata cur = offsets.get(topicPartition);
+            if (cur.offset() < offsetAndMetadata.offset()) {
+                log.warn("当前 {}-{} 小于偏移量范围 {} < {} 进行修正", topicPartition.topic(), topicPartition.partition(), cur.offset(), offsetAndMetadata.offset());
+                offsets.put(topicPartition, offsetAndMetadata);
+            }
+        });
+        Map<TopicPartition, OffsetAndMetadata> latest = offsetLatest();
+        latest.forEach((topicPartition, offsetAndMetadata) -> {
+            OffsetAndMetadata cur = offsets.get(topicPartition);
+            if (cur.offset() > offsetAndMetadata.offset()) {
+                log.warn("当前 {}-{} 大于偏移量范围 {} > {} 进行修正", topicPartition.topic(), topicPartition.partition(), cur.offset(), offsetAndMetadata.offset());
+                offsets.put(topicPartition, offsetAndMetadata);
+            }
+        });
         return offsets;
     }
 
