@@ -149,7 +149,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
         for (TopicPartition topicPartition : topicPartitions) {
             consumer.seekToBeginning(topicPartition);
             long offset = consumer.position(topicPartition);
-            //log.info("EARLIEST offset {} {} {}", topic, topicPartition.partition(), offset);
+            //log.info("EARLIEST offset {}-{} {}", topic, topicPartition.partition(), offset);
             offsets.put(topicPartition, new OffsetAndMetadata(offset));
         }
         return offsets;
@@ -165,7 +165,7 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
         for (TopicPartition topicPartition : topicPartitions) {
             consumer.seekToEnd(topicPartition);
             long offset = consumer.position(topicPartition);
-            //log.info("LATEST offset {} {} {}", topic, topicPartition.partition(), offset);
+            //log.info("LATEST offset {}-{} {}", topic, topicPartition.partition(), offset);
             offsets.put(topicPartition, new OffsetAndMetadata(offset));
         }
         return offsets;
@@ -181,18 +181,18 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
         for (TopicPartition topicPartition : topicPartitions) {
             OffsetAndMetadata committed = consumer.committed(topicPartition);
             if (committed != null) {
-                //log.info("CURRENT group offset {} {} {}", topic, topicPartition.partition(), committed.offset());
+                //log.info("CURRENT group offset {}-{} {}", topic, topicPartition.partition(), committed.offset());
                 offsets.put(topicPartition, new OffsetAndMetadata(committed.offset()));
             } else {
                 if (config.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG).equalsIgnoreCase(OffsetResetStrategy.LATEST.name())) {
                     consumer.seekToEnd(topicPartition);
                     long offset = consumer.position(topicPartition);
-                    //log.info("LATEST offset {} {} {}", topic, topicPartition.partition(), offset);
+                    //log.info("LATEST offset {}-{} {}", topic, topicPartition.partition(), offset);
                     offsets.put(topicPartition, new OffsetAndMetadata(offset));
                 } else {
                     consumer.seekToBeginning(topicPartition);
                     long offset = consumer.position(topicPartition);
-                    //log.info("EARLIEST offset {} {} {}", topic, topicPartition.partition(), offset);
+                    //log.info("EARLIEST offset {}-{} {}", topic, topicPartition.partition(), offset);
                     offsets.put(topicPartition, new OffsetAndMetadata(offset));
                 }
             }
