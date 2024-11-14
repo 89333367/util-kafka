@@ -152,7 +152,6 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
             //log.info("EARLIEST offset {} {} {}", topic, topicPartition.partition(), offset);
             offsets.put(topicPartition, new OffsetAndMetadata(offset));
         }
-        consumer.close();
         return offsets;
     }
 
