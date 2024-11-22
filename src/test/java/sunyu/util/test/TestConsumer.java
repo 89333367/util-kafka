@@ -220,4 +220,19 @@ public class TestConsumer {
             //kafkaConsumerUtil.close();
         });
     }
+
+
+    @Test
+    void t011() {
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+                .topic("US_GENERAL_NJ")
+                .bootstrapServers("192.168.11.8:9092")
+                .groupId("test_group_20241122")
+                .build();
+        kafkaConsumerUtil.pollRecord(consumerRecord -> {
+            log.info("开始处理 {}", consumerRecord);
+            ThreadUtil.sleep(1000 * 1);
+            log.info("处理完毕 {}\n", consumerRecord);
+        });
+    }
 }
