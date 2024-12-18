@@ -235,4 +235,23 @@ public class TestConsumer {
             log.info("处理完毕 {}\n", consumerRecord);
         });
     }
+
+
+    @Test
+    void t012() {
+        List<Future> l = new ArrayList<>();
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topics(Arrays.asList("APP_NOTIFY_NJ_G4"))
+                .build();
+        //持续消费，一批一批处理，处理完毕后，只要不抛异常，会自动提交offset
+        kafkaConsumerUtil.pollRecords(100, records -> {
+            log.debug("本批拉取了 {} 条消息", records.count());
+            for (ConsumerRecord<String, String> record : records) {
+                log.info("{}", record);
+            }
+            //kafkaConsumerUtil.close();
+        });
+    }
 }
