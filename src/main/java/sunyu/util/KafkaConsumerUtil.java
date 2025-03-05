@@ -11,6 +11,7 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * kafka消费者工具
@@ -96,6 +97,7 @@ public class KafkaConsumerUtil implements AutoCloseable {
         private final Properties props = new Properties();// Kafka配置属性
         private final List<String> topics = new ArrayList<>();//消费主题列表
         private final AtomicBoolean heartbeat = new AtomicBoolean(false);//心跳状态
+        private final ReentrantLock lock = new ReentrantLock();//可重入互斥锁
     }
 
     public static class Builder {
@@ -185,26 +187,31 @@ public class KafkaConsumerUtil implements AutoCloseable {
         while (true) {
             log.debug("[模拟kafka心跳]");
             if (config.heartbeat.get()) {
-                TopicPartition[] partitions = config.consumer.assignment().toArray(new TopicPartition[0]);
-                config.consumer.pause(partitions);
-                //log.debug("维持心跳");
-                ConsumerRecords<String, String> records = config.consumer.poll(0);
-                if (!records.isEmpty()) {
-                    log.info("[重置拉取偏移量] 避免丢失数据 开始");
-                    Map<TopicPartition, Long> firstOffsets = new HashMap<>();
-                    for (ConsumerRecord<String, String> record : records) {
-                        TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
-                        if (!firstOffsets.containsKey(topicPartition)) {
-                            firstOffsets.put(topicPartition, record.offset());
+                try {
+                    config.lock.lock();
+                    TopicPartition[] partitions = config.consumer.assignment().toArray(new TopicPartition[0]);
+                    config.consumer.pause(partitions);
+                    //log.debug("维持心跳");
+                    ConsumerRecords<String, String> records = config.consumer.poll(0);
+                    if (!records.isEmpty()) {
+                        log.info("[重置拉取偏移量] 避免丢失数据 开始");
+                        Map<TopicPartition, Long> firstOffsets = new HashMap<>();
+                        for (ConsumerRecord<String, String> record : records) {
+                            TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
+                            if (!firstOffsets.containsKey(topicPartition)) {
+                                firstOffsets.put(topicPartition, record.offset());
+                            }
                         }
+                        firstOffsets.forEach((topicPartition, offset) -> {
+                            // seek offset 回退，下次抓取还从这里抓取
+                            config.consumer.seek(topicPartition, offset);
+                        });
+                        log.info("[重置拉取偏移量] 避免丢失数据 结束");
                     }
-                    firstOffsets.forEach((topicPartition, offset) -> {
-                        // seek offset 回退，下次抓取还从这里抓取
-                        config.consumer.seek(topicPartition, offset);
-                    });
-                    log.info("[重置拉取偏移量] 避免丢失数据 结束");
+                    config.consumer.resume(partitions);
+                } finally {
+                    config.lock.unlock();
                 }
-                config.consumer.resume(partitions);
             }
             ThreadUtil.sleep(1000 * 5);
         }
@@ -243,7 +250,12 @@ public class KafkaConsumerUtil implements AutoCloseable {
                     commitOffsets.put(topicPartition, new OffsetAndMetadata(record.offset() + 1));
                 }
                 log.debug("[commitOffsets] {}", commitOffsets);
-                config.consumer.commitSync(commitOffsets);
+                try {
+                    config.lock.lock();
+                    config.consumer.commitSync(commitOffsets);
+                } finally {
+                    config.lock.unlock();
+                }
             } catch (Exception e) {
                 config.heartbeat.set(false);//结束心跳
                 log.error("[批量消息处理失败] {}", ExceptionUtil.stacktraceToString(e));
