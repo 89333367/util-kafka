@@ -197,6 +197,19 @@ public class KafkaOffsetUtil implements AutoCloseable {
     }
 
     /**
+     * 获得当前用户的偏移量
+     *
+     * @return
+     */
+    public Map<TopicPartition, Long> getCurrentOffsets() {
+        Map<TopicPartition, Long> map = new HashMap<>();
+        for (TopicPartition topicPartition : getTopicPartitions()) {
+            map.put(topicPartition, getCurrentOffset(topicPartition));
+        }
+        return map;
+    }
+
+    /**
      * 修复当前组的偏移量
      */
     public void fixCurrentOffsets() {
@@ -235,6 +248,29 @@ public class KafkaOffsetUtil implements AutoCloseable {
             put(topicPartition, new OffsetAndMetadata(offset));
         }});
         config.consumer.resume(topicPartition);
+    }
+
+    /**
+     * 改变当前组的偏移量
+     *
+     * @param offsets
+     */
+    public void commitOffsets(Map<TopicPartition, OffsetAndMetadata> offsets) {
+        log.debug("[改变偏移量] 组:{} 偏移量:{}", config.props.get(ConsumerConfig.GROUP_ID_CONFIG), offsets);
+        config.consumer.commitSync(offsets);
+    }
+
+    /**
+     * 获得kafka配置参数
+     *
+     * @return Map
+     */
+    public Map<String, String> getKafkaParamsMap() {
+        Map<String, String> map = new HashMap<>();
+        for (Map.Entry<?, ?> entry : config.props.entrySet()) {
+            map.put(String.valueOf(entry.getKey()), String.valueOf(entry.getValue()));
+        }
+        return map;
     }
 
 }

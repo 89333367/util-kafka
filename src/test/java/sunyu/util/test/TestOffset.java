@@ -79,5 +79,20 @@ public class TestOffset {
         kafkaOffsetUtil.close();
     }
 
+    @Test
+    void t005() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
+                .build();
+
+        log.info("{}", kafkaOffsetUtil.getKafkaParamsMap());
+        log.info("{}", kafkaOffsetUtil.getCurrentOffsets());
+
+        //程序关闭前回收资源
+        kafkaOffsetUtil.close();
+    }
+
 
 }
