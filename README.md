@@ -25,431 +25,259 @@
 ## kafka消费者
 
 ```java
+import cn.hutool.core.thread.ThreadUtil;
+import cn.hutool.log.Log;
+import cn.hutool.log.LogFactory;
+import org.junit.jupiter.api.Test;
+import sunyu.util.KafkaConsumerUtil;
 
-@Test
-void t007() {
-    KafkaConsumerUtil kafkaConsumerUtilbak = KafkaConsumerUtil.builder()
-            //.topics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-            .topic("GENERAL_MSG")
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("test_group_kafka_consumer_util")
-            .build();//全局只要定义一个即可
-    kafkaConsumerUtilbak.pollRecord(consumerRecord -> {
-        log.info("开始处理 {}", consumerRecord);
-        //处理消息，如果这里没有抛异常，则消息会自动提交offset，如果这里 throw Exception，那么这条消息不会提交offset，下次还会拉取回来
-        //record.offset();
-        //record.topic();
-        //record.partition();
-        //record.key();
-        //record.value();
-        ThreadUtil.sleep(1000 * 3);
-        log.info("处理完毕 {}", consumerRecord);
-    });
-}
+public class TestConsumer {
+    Log log = LogFactory.get();
 
-@Test
-void t001() {
-    KafkaConsumerUtil kafkaConsumerUtilbak = KafkaConsumerUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("test_group_kafka_consumer_util")
-            .topics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-            .build();
-    //持续消费，一条一条处理，处理完毕后，只要不抛异常，会自动提交offset
-    kafkaConsumerUtilbak.pollRecord((record) -> {
-        log.debug("收到消息 {}", record);
-        //record.offset();
-        //record.topic();
-        //record.partition();
-        //record.key();
-        //record.value();
-        ThreadUtil.sleep(5000);
-        log.debug("处理完毕 {}", record);
-    });
-}
+    @Test
+    void t001() {
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
+                .build();
 
-@Test
-void t002() {
-    KafkaConsumerUtil kafkaConsumerUtilbak = KafkaConsumerUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("test_group_kafka_consumer_util")
-            .topics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-            .build();
-    //持续消费，一批一批处理，处理完毕后，只要不抛异常，会自动提交offset
-    kafkaConsumerUtilbak.pollRecords(100, records -> {
-        log.debug("本批拉取了 {} 条消息", records);
-        for (ConsumerRecord<String, String> record : records) {
-            log.debug("{}", record);
-            ThreadUtil.sleep(5000);//模拟record处理时间
-        }
-    });
-}
+        kafkaConsumerUtil.pollRecords(null, consumerRecords -> {
+            log.info("收到消息 {}", consumerRecords.count());
+            ThreadUtil.sleep(1000 * 30);//模拟处理时间
+        });
+
+        kafkaConsumerUtil.close();
+    }
 
 
-@Test
-void t008() {
-    AtomicInteger i = new AtomicInteger();
-    Properties config = new Properties();
-    config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-    config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
-    config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-    config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-    config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
-    config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_kafka_consumer_util");
-    KafkaConsumerUtil kafkaConsumerUtilbak = KafkaConsumerUtil.builder()
-            //.topics(Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB"))
-            .topic("GENERAL_MSG")
-            .build(config);//全局只要定义一个即可
-    kafkaConsumerUtilbak.pollRecord(consumerRecord -> {
-        if (i.get() >= 5) {
-            kafkaConsumerUtilbak.close();
-            return;
-        }
-        log.info("开始处理 {}", consumerRecord);
-        //处理消息，如果这里没有抛异常，则消息会自动提交offset，如果这里 throw Exception，那么这条消息不会提交offset，下次还会拉取回来
-        //record.offset();
-        //record.topic();
-        //record.partition();
-        //record.key();
-        //record.value();
-        ThreadUtil.sleep(1000 * 1);
-        log.info("处理完毕 {}", consumerRecord);
-        i.incrementAndGet();
-    });
+    @Test
+    void t002() {
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
+                .build();
+
+        kafkaConsumerUtil.pollRecords(null, consumerRecords -> {
+            log.info("收到消息 {}", consumerRecords.count());
+            ThreadUtil.sleep(1000 * 30);//模拟处理时间
+            throw new RuntimeException("模拟处理出现了异常");
+        });
+
+        kafkaConsumerUtil.close();
+    }
+
+    @Test
+    void t003() {
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
+                .build();
+
+        kafkaConsumerUtil.pollRecord(record -> {
+            log.info("收到消息 {}", record);
+            ThreadUtil.sleep(1000 * 30);//模拟处理时间
+        });
+
+        kafkaConsumerUtil.close();
+    }
+
+    @Test
+    void t004() {
+        KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
+                .build();
+
+        kafkaConsumerUtil.pollRecord(record -> {
+            log.info("收到消息 {}", record);
+            ThreadUtil.sleep(1000 * 30);//模拟处理时间
+            throw new RuntimeException("模拟处理出现了异常");
+        });
+
+        kafkaConsumerUtil.close();
+    }
+
 }
 ```
 
 ## kafka生产者
 
 ```java
+import cn.hutool.log.Log;
+import cn.hutool.log.LogFactory;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.junit.jupiter.api.Test;
+import sunyu.util.KafkaProducerUtil;
 
-@Test
-void 同步发送消息() {
-    KafkaProducerUtil kafkaProducerUtilbak = KafkaProducerUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .build();
-    kafkaProducerUtilbak.sendSync("主题", "键，这里可以为null", "值");
-    kafkaProducerUtilbak.flush();//如果想消息立刻发送，不缓存，那么调用这句话，否则消息会缓存一下，隔一会才发送
-}
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
-@Test
-void 同步发送消息并且自己处理metadata和exception() {
-    KafkaProducerUtil kafkaProducerUtilbak = KafkaProducerUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .build();
-    kafkaProducerUtilbak.sendSync("主题", "键，这里可以为null", "值", (metadata, exception) -> {
-        // 这里你可以自己处理 metadata 和 exception 异常信息
-    });
-    kafkaProducerUtilbak.flush();//如果想消息立刻发送，不缓存，那么调用这句话，否则消息会缓存一下，隔一会才发送
-}
+public class TestProducer {
+    Log log = LogFactory.get();
 
-@Test
-void 异步发送消息() {
-    KafkaProducerUtil kafkaProducerUtilbak = KafkaProducerUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .build();
-    Future<RecordMetadata> recordMetadataFuture = kafkaProducerUtilbak.sendAsync("主题", "键，这里可以为null", "值");
-    try {
-        recordMetadataFuture.get();
-    } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-    } catch (ExecutionException e) {
-        throw new RuntimeException(e);
+    @Test
+    void t001() {
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .build();
+
+        //发送消息
+        kafkaProducerUtil.send("主题", "键，这里可以为null", "值");
+
+        //关闭之前，或者想让消息立刻发送，可以调用一下flush刷新缓存
+        kafkaProducerUtil.flush();
+
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
     }
-    kafkaProducerUtilbak.flush();//如果想消息立刻发送，不缓存，那么调用这句话，否则消息会缓存一下，隔一会才发送
-}
 
-@Test
-void 异步发送消息并且自己处理metadata和exception() {
-    KafkaProducerUtil kafkaProducerUtilbak = KafkaProducerUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .build();
-    Future<RecordMetadata> recordMetadataFuture = kafkaProducerUtilbak.sendAsync("主题", "键，这里可以为null", "值", (metadata, exception) -> {
-        // 这里你可以自己处理 metadata 和 exception 异常信息
-    });
-    try {
-        recordMetadataFuture.get();
-    } catch (InterruptedException e) {
-        throw new RuntimeException(e);
-    } catch (ExecutionException e) {
-        throw new RuntimeException(e);
+    @Test
+    void t002() {
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .acks("all")
+                .build();
+
+        for (int i = 0; i < 100; i++) {
+            kafkaProducerUtil.send("主题", "键，这里可以为null", "值" + i);
+        }
+        kafkaProducerUtil.flush();
+
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
     }
-    kafkaProducerUtilbak.flush();//如果想消息立刻发送，不缓存，那么调用这句话，否则消息会缓存一下，隔一会才发送
-}
 
-@Test
-void 批量发送消息() {
-    KafkaProducerUtil kafkaProducerUtilbak = KafkaProducerUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .build();
-    for (int i = 0; i < 10000; i++) {
-        //这里发送消息
+    @Test
+    void t003() {
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .build();
+
+        Future<RecordMetadata> future = kafkaProducerUtil.send("主题", "键，这里可以为null", "值");
+        try {
+            future.get();//等待消息发送完毕
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
     }
-    kafkaProducerUtilbak.flush();//批量发送后，调用一次flush即可，不需要在每一次循环中调用，减少网络交互
-}
 
-@Test
-void 关闭整个项目() {
-    KafkaProducerUtil kafkaProducerUtilbak = KafkaProducerUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .build();
-    //这里发送消息
 
-    //如果整个项目需要关闭，调用close释放资源
-    kafkaProducerUtilbak.close();
-}
+    @Test
+    void t004() {
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .build();
 
-@Test
-void 构建传参() {
-    Properties config = new Properties();
-    config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
-    KafkaProducerUtil kafkaProducerUtilbak = KafkaProducerUtil.builder()
-            .build(config);
+        kafkaProducerUtil.getProducer()//获得原生producer操作
+                .send(new ProducerRecord<>("", "", ""), (metadata, exception) -> {
+                    if (exception != null) {
+                        log.error("消息发送失败", exception);
+                    } else {
+                        log.info("消息发送成功");
+                    }
+                });
 
-    kafkaProducerUtilbak.sendSync("test_topic", "key1", "value1");
+        kafkaProducerUtil.flush();
 
-    //如果整个项目需要关闭，调用close释放资源
-    kafkaProducerUtilbak.close();
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
+    }
+
 }
 ```
 
 ### kafka偏移量使用
 
 ```java
-@Test
-void t001() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("test_group_kafka_consumer_util")
-            .topic("GENERAL_MSG")
-            .build();
-    //重新调整某主题，某个分区的偏移量
-    kafkaOffsetUtilbak.seek("GENERAL_MSG", 0, 17236000);
+import cn.hutool.log.Log;
+import cn.hutool.log.LogFactory;
+import org.apache.kafka.common.TopicPartition;
+import org.junit.jupiter.api.Test;
+import sunyu.util.KafkaOffsetUtil;
 
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
+public class TestOffset {
+    Log log = LogFactory.get();
 
+    @Test
+    void t001() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
+                .build();
 
-@Test
-void t002() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("test_group_kafka_consumer_util")
-            .topic("GENERAL_MSG")
-            .build();
-    //将某主题，某个分区的偏移量调整到最后
-    kafkaOffsetUtilbak.seekToEnd("GENERAL_MSG", 0);
+        //获取主题与分区信息
+        for (TopicPartition topicPartition : kafkaOffsetUtil.getTopicPartitions()) {
+            log.info("{}", topicPartition);
+        }
 
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
-
-@Test
-void t003() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("test_group_kafka_consumer_util")
-            .topic("GENERAL_MSG")
-            .build();
-    //将某主题，某个分区的偏移量调整到最前
-    kafkaOffsetUtilbak.seekToBeginning("GENERAL_MSG", 0);
-
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
-
-@Test
-void t004() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("test_group_kafka_consumer_util")
-            .topic("GENERAL_MSG")
-            .build();
-    //控制台debug查看某主题，某分区的偏移量情况
-    kafkaOffsetUtilbak.offsetLatest().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
-
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
-
-@Test
-void t005() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("test_group_kafka_consumer_util")
-            .topic("GENERAL_MSG")
-            .build();
-    kafkaOffsetUtilbak.offsetEarliest().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
-
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
-
-
-@Test
-void t006() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
-            .groupId("test_group_kafka_consumer_util")
-            .topic("GENERAL_MSG")
-            .build();
-    kafkaOffsetUtilbak.offsetCurrent().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
-
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
-
-
-@Test
-void t007() {
-    Properties config = new Properties();
-    config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka005:9092,kafka015:9092,kafka016:9092");
-    config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_kafka_consumer_util");
-    config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-    config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
-    config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-    config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .topic("GENERAL_MSG")
-            .build(config);
-
-    // todo code
-
-    kafkaOffsetUtilbak.close();
-}
-
-@Test
-void t008() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
-            .groupId("test_group_kafka_consumer_util")
-            .topic("GENERAL_MSG")
-            .build();
-    for (int i = 0; i < 10; i++) {
-        kafkaOffsetUtilbak.seekToBeginning("GENERAL_MSG", i);
+        //程序关闭前回收资源
+        kafkaOffsetUtil.close();
     }
 
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
+    @Test
+    void t002() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
+                .build();
 
+        //获取每个主题每个分区的偏移量
+        for (TopicPartition topicPartition : kafkaOffsetUtil.getTopicPartitions()) {
+            long earliestOffset = kafkaOffsetUtil.getEarliestOffset(topicPartition);
+            long currentOffset = kafkaOffsetUtil.getCurrentOffset(topicPartition);
+            long latestOffset = kafkaOffsetUtil.getLatestOffset(topicPartition);
+            log.info("{} Earliest:{} Current:{} Latest:{}", topicPartition, earliestOffset, currentOffset, latestOffset);
+        }
 
-@Test
-void t009() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("alter-farm-dev1")
-            .topic("GENERAL_MSG")
-            .build();
-    //控制台debug查看某主题，某分区的偏移量情况
-    kafkaOffsetUtilbak.offsetLatest().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
-
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
-
-@Test
-void t010() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("alter-farm-dev1")
-            .topic("GENERAL_MSG")
-            .build();
-    kafkaOffsetUtilbak.offsetEarliest().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
-
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
-
-
-@Test
-void t011() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("alter-farm-dev1")
-            .topic("GENERAL_MSG")
-            .build();
-    kafkaOffsetUtilbak.offsetCurrent().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
-
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
-
-
-@Test
-void t012() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("alter-farm-dev1")
-            .topic("GENERAL_MSG")
-            .build();
-    for (int i = 0; i < 4; i++) {
-        kafkaOffsetUtilbak.seekToBeginning("GENERAL_MSG", i);
+        //程序关闭前回收资源
+        kafkaOffsetUtil.close();
     }
 
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
+    @Test
+    void t003() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
+                .build();
 
-@Test
-void t013() {
-    String topic = "US_GENERAL";
-    Properties config = new Properties();
-    config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-    config.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
-    config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
-    config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-    config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-    config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
-    config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_commit_groupid");
-    Consumer<?, ?> consumer = new KafkaConsumer<>(config);
-    TopicPartition topicPartition = new TopicPartition(topic, 0);
-    Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-    offsets.put(topicPartition, new OffsetAndMetadata(123456));
-    consumer.commitSync(offsets);
-    consumer.close();
-}
+        for (TopicPartition topicPartition : kafkaOffsetUtil.getTopicPartitions()) {
+            //改变当前组的偏移量
+            kafkaOffsetUtil.seekAndCommit(topicPartition, 0);
+        }
 
-
-@Test
-void t014() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("test_commit_groupid")
-            .topic("GENERAL_MSG")
-            .build();
-    kafkaOffsetUtilbak.offsetCurrent().forEach((topicPartition, offsetAndMetadata) -> log.info("{} {}", topicPartition, offsetAndMetadata));
-
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
-
-
-@Test
-void t015() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("test_commit_groupid")
-            .topic("GENERAL_MSG")
-            .build();
-    for (TopicPartition topicPartition : kafkaOffsetUtilbak.getTopicPartitions()) {
-        log.info("{}", topicPartition);
+        //程序关闭前回收资源
+        kafkaOffsetUtil.close();
     }
 
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
-}
 
-@Test
-void t016() {
-    KafkaOffsetUtil kafkaOffsetUtilbak = KafkaOffsetUtil.builder()
-            .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-            .groupId("test_commit_groupid")
-            .topic("GENERAL_MSG")
-            .build();
-    log.info("{}", kafkaOffsetUtilbak.getPartitions("GENERAL_MSG"));
+    @Test
+    void t004() {
+        KafkaOffsetUtil kafkaOffsetUtil = KafkaOffsetUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .groupId("test_group_kafka_consumer_util")
+                .topic("GENERAL_MSG")
+                .build();
 
-    //不在使用需要close
-    kafkaOffsetUtilbak.close();
+        //修复当前组的偏移量
+        kafkaOffsetUtil.fixCurrentOffsets();
+
+        //程序关闭前回收资源
+        kafkaOffsetUtil.close();
+    }
+
+
 }
 ```

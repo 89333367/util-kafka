@@ -10,7 +10,6 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
@@ -96,7 +95,6 @@ public class KafkaConsumerUtil implements AutoCloseable {
         private Consumer<String, String> consumer;//消费者对象
         private final Properties props = new Properties();// Kafka配置属性
         private final List<String> topics = new ArrayList<>();//消费主题列表
-        private final AtomicBoolean heartbeat = new AtomicBoolean(false);//心跳状态
         private final ReentrantLock lock = new ReentrantLock();//可重入互斥锁
     }
 
@@ -175,7 +173,6 @@ public class KafkaConsumerUtil implements AutoCloseable {
     @Override
     public void close() {
         log.info("[回收kafka消费者工具] 开始");
-        config.heartbeat.set(false);//结束心跳
         config.consumer.close();
         log.info("[回收kafka消费者工具] 结束");
     }
@@ -185,88 +182,138 @@ public class KafkaConsumerUtil implements AutoCloseable {
      */
     private void heartbeat() {
         while (true) {
-            log.debug("[模拟kafka心跳]");
-            if (config.heartbeat.get()) {
-                try {
-                    config.lock.lock();
-                    TopicPartition[] partitions = config.consumer.assignment().toArray(new TopicPartition[0]);
-                    config.consumer.pause(partitions);
-                    //log.debug("维持心跳");
-                    ConsumerRecords<String, String> records = config.consumer.poll(0);
-                    if (!records.isEmpty()) {
-                        log.info("[重置拉取偏移量] 避免丢失数据 开始");
-                        Map<TopicPartition, Long> firstOffsets = new HashMap<>();
-                        for (ConsumerRecord<String, String> record : records) {
-                            TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
-                            if (!firstOffsets.containsKey(topicPartition)) {
-                                firstOffsets.put(topicPartition, record.offset());
-                            }
+            //log.debug("[模拟kafka心跳]");
+            try {
+                config.lock.lock();
+                TopicPartition[] partitions = config.consumer.assignment().toArray(new TopicPartition[0]);
+                config.consumer.pause(partitions);
+                //log.debug("维持心跳");
+                ConsumerRecords<String, String> records = config.consumer.poll(0);
+                if (!records.isEmpty()) {
+                    log.info("[重置拉取偏移量] 避免丢失数据 开始");
+                    Map<TopicPartition, Long> firstOffsets = new HashMap<>();
+                    for (ConsumerRecord<String, String> record : records) {
+                        TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
+                        if (!firstOffsets.containsKey(topicPartition)) {
+                            firstOffsets.put(topicPartition, record.offset());
                         }
-                        firstOffsets.forEach((topicPartition, offset) -> {
-                            // seek offset 回退，下次抓取还从这里抓取
-                            config.consumer.seek(topicPartition, offset);
-                        });
-                        log.info("[重置拉取偏移量] 避免丢失数据 结束");
                     }
-                    config.consumer.resume(partitions);
-                } catch (Exception e) {
-                    log.warn("[模拟kafka心跳失败] {}", ExceptionUtil.stacktraceToString(e));
-                } finally {
-                    config.lock.unlock();
+                    firstOffsets.forEach((topicPartition, offset) -> {
+                        // seek offset 回退，下次抓取还从这里抓取
+                        config.consumer.seek(topicPartition, offset);
+                    });
+                    log.info("[重置拉取偏移量] 避免丢失数据 结束");
                 }
+                config.consumer.resume(partitions);
+            } catch (Exception e) {
+                log.warn("[模拟kafka心跳失败] {}", ExceptionUtil.stacktraceToString(e));
+            } finally {
+                config.lock.unlock();
             }
             ThreadUtil.sleep(1000 * 5);
         }
     }
 
     /**
-     * 批量拉取数据
+     * 拉取数据，单条处理
      *
-     * @param pollTime       拉取时间，单位毫秒
+     * @param recordHandler
+     */
+    public void pollRecord(java.util.function.Consumer<ConsumerRecord<String, String>> recordHandler) {
+        while (true) {
+            ConsumerRecords<String, String> records;
+            try {
+                config.lock.lock();
+                records = config.consumer.poll(50);
+            } finally {
+                config.lock.unlock();
+            }
+            if (records.isEmpty()) {
+                continue;
+            }
+            for (ConsumerRecord<String, String> record : records) {
+                TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
+                try {
+                    log.debug("[拉取消息] {} {}", topicPartition, record.offset());
+                    recordHandler.accept(record);
+                    try {
+                        config.lock.lock();
+                        HashMap<TopicPartition, OffsetAndMetadata> recordCommitOffset = new HashMap<TopicPartition, OffsetAndMetadata>() {{
+                            put(topicPartition, new OffsetAndMetadata(record.offset() + 1));
+                        }};
+                        config.consumer.commitSync(recordCommitOffset);
+                        log.info("[消息处理成功] 偏移量修改为 {}", recordCommitOffset);
+                    } finally {
+                        config.lock.unlock();
+                    }
+                } catch (Exception e) {
+                    log.error("[消息处理失败] {}", ExceptionUtil.stacktraceToString(e));
+                    try {
+                        config.lock.lock();
+                        // seek offset 回退，下次抓取还从这里抓取
+                        config.consumer.seek(topicPartition, record.offset());
+                    } finally {
+                        config.lock.unlock();
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * 拉取数据，批量处理
+     *
+     * @param pollTime       拉取时间，单位毫秒，时间越长，拉取数据越多，可以传递null，默认50毫秒
      * @param recordsHandler 拉取到的消息处理函数
      */
     public void pollRecords(Long pollTime, java.util.function.Consumer<ConsumerRecords<String, String>> recordsHandler) {
         while (true) {
-            Map<TopicPartition, Long> firstOffsets = new HashMap<>();
+            Map<TopicPartition, Long> recordsFirstOffsets = new HashMap<>();
+            Map<TopicPartition, OffsetAndMetadata> recordsCommitOffsets = new HashMap<>();
             try {
                 if (pollTime == null) {
                     pollTime = 50L;
                 }
-                ConsumerRecords<String, String> records = config.consumer.poll(pollTime);
+                ConsumerRecords<String, String> records;
+                try {
+                    config.lock.lock();
+                    records = config.consumer.poll(pollTime);
+                } finally {
+                    config.lock.unlock();
+                }
                 if (records.isEmpty()) {
                     continue;
                 }
+                //记录当前结果集每个主题每个分区的第一个偏移量和最后一个偏移量
                 for (ConsumerRecord<String, String> record : records) {
                     TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
-                    if (!firstOffsets.containsKey(topicPartition)) {
-                        firstOffsets.put(topicPartition, record.offset());
+                    if (!recordsFirstOffsets.containsKey(topicPartition)) {
+                        recordsFirstOffsets.put(topicPartition, record.offset());
                     }
+                    recordsCommitOffsets.put(topicPartition, new OffsetAndMetadata(record.offset() + 1));
                 }
-                log.debug("[firstOffsets] {}", firstOffsets);
-                config.heartbeat.set(true);//开启心跳
+                log.debug("[recordsFirstOffsets] {}", recordsFirstOffsets);
+                log.debug("[recordsCommitOffsets] {}", recordsCommitOffsets);
                 recordsHandler.accept(records); // 调用回调函数处理消息
-                config.heartbeat.set(false);//结束心跳
-                Map<TopicPartition, OffsetAndMetadata> commitOffsets = new HashMap<>();
-                for (ConsumerRecord<String, String> record : records) {
-                    TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
-                    commitOffsets.put(topicPartition, new OffsetAndMetadata(record.offset() + 1));
-                }
-                log.debug("[commitOffsets] {}", commitOffsets);
                 try {
                     config.lock.lock();
-                    config.consumer.commitSync(commitOffsets);
+                    config.consumer.commitSync(recordsCommitOffsets);
+                    log.info("[批量消息处理成功] 偏移量修改为 {}", recordsCommitOffsets);
                 } finally {
                     config.lock.unlock();
                 }
             } catch (Exception e) {
-                config.heartbeat.set(false);//结束心跳
                 log.error("[批量消息处理失败] {}", ExceptionUtil.stacktraceToString(e));
-                firstOffsets.forEach((topicPartition, offset) -> {
-                    // seek offset 回退，下次抓取还从这里抓取
-                    config.consumer.seek(topicPartition, offset);
-                });
-            } finally {
-                config.heartbeat.set(false);//结束心跳
+                try {
+                    config.lock.lock();
+                    recordsFirstOffsets.forEach((topicPartition, offset) -> {
+                        // seek offset 回退，下次抓取还从这里抓取
+                        config.consumer.seek(topicPartition, offset);
+                    });
+                } finally {
+                    config.lock.unlock();
+                }
             }
         }
     }
