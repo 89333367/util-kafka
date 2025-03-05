@@ -209,6 +209,8 @@ public class KafkaConsumerUtil implements AutoCloseable {
                         log.info("[重置拉取偏移量] 避免丢失数据 结束");
                     }
                     config.consumer.resume(partitions);
+                } catch (Exception e) {
+                    log.warn("[模拟kafka心跳失败] {}", ExceptionUtil.stacktraceToString(e));
                 } finally {
                     config.lock.unlock();
                 }
