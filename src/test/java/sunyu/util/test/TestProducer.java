@@ -2,12 +2,11 @@ package sunyu.util.test;
 
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
-import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.jupiter.api.Test;
 import sunyu.util.KafkaProducerUtil;
 
-import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -15,91 +14,76 @@ public class TestProducer {
     Log log = LogFactory.get();
 
     @Test
-    void 同步发送消息() {
+    void t001() {
         KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
-        kafkaProducerUtil.sendSync("主题", "键，这里可以为null", "值");
-        kafkaProducerUtil.flush();//如果想消息立刻发送，不缓存，那么调用这句话，否则消息会缓存一下，隔一会才发送
+
+        //发送消息
+        kafkaProducerUtil.send("主题", "键，这里可以为null", "值");
+
+        //关闭之前，或者想让消息立刻发送，可以调用一下flush刷新缓存
+        kafkaProducerUtil.flush();
+
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
     }
 
     @Test
-    void 同步发送消息并且自己处理metadata和exception() {
+    void t002() {
         KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .acks("all")
                 .build();
-        kafkaProducerUtil.sendSync("主题", "键，这里可以为null", "值", (metadata, exception) -> {
-            // 这里你可以自己处理 metadata 和 exception 异常信息
-        });
-        kafkaProducerUtil.flush();//如果想消息立刻发送，不缓存，那么调用这句话，否则消息会缓存一下，隔一会才发送
+
+        for (int i = 0; i < 100; i++) {
+            kafkaProducerUtil.send("主题", "键，这里可以为null", "值" + i);
+        }
+        kafkaProducerUtil.flush();
+
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
     }
 
     @Test
-    void 异步发送消息() {
+    void t003() {
         KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
-        Future<RecordMetadata> recordMetadataFuture = kafkaProducerUtil.sendAsync("主题", "键，这里可以为null", "值");
+
+        Future<RecordMetadata> future = kafkaProducerUtil.send("主题", "键，这里可以为null", "值");
         try {
-            recordMetadataFuture.get();
+            future.get();//等待消息发送完毕
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } catch (ExecutionException e) {
             throw new RuntimeException(e);
         }
-        kafkaProducerUtil.flush();//如果想消息立刻发送，不缓存，那么调用这句话，否则消息会缓存一下，隔一会才发送
-    }
 
-    @Test
-    void 异步发送消息并且自己处理metadata和exception() {
-        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-                .build();
-        Future<RecordMetadata> recordMetadataFuture = kafkaProducerUtil.sendAsync("主题", "键，这里可以为null", "值", (metadata, exception) -> {
-            // 这里你可以自己处理 metadata 和 exception 异常信息
-        });
-        try {
-            recordMetadataFuture.get();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-        kafkaProducerUtil.flush();//如果想消息立刻发送，不缓存，那么调用这句话，否则消息会缓存一下，隔一会才发送
-    }
-
-    @Test
-    void 批量发送消息() {
-        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-                .build();
-        for (int i = 0; i < 10000; i++) {
-            //这里发送消息
-        }
-        kafkaProducerUtil.flush();//批量发送后，调用一次flush即可，不需要在每一次循环中调用，减少网络交互
-    }
-
-    @Test
-    void 关闭整个项目() {
-        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
-                .build();
-        //这里发送消息
-
-        //如果整个项目需要关闭，调用close释放资源
+        //项目关闭前要回收资源
         kafkaProducerUtil.close();
     }
 
+
     @Test
-    void 构建传参() {
-        Properties config = new Properties();
-        config.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
+    void t004() {
         KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-                .build(config);
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .build();
 
-        kafkaProducerUtil.sendSync("test_topic", "key1", "value1");
+        kafkaProducerUtil.getProducer()//获得原生producer操作
+                .send(new ProducerRecord<>("", "", ""), (metadata, exception) -> {
+                    if (exception != null) {
+                        log.error("消息发送失败", exception);
+                    } else {
+                        log.info("消息发送成功");
+                    }
+                });
 
-        //如果整个项目需要关闭，调用close释放资源
+        kafkaProducerUtil.flush();
+
+        //项目关闭前要回收资源
         kafkaProducerUtil.close();
     }
+
 }

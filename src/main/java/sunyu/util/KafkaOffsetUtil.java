@@ -1,6 +1,6 @@
 package sunyu.util;
 
-import cn.hutool.core.util.IdUtil;
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import org.apache.kafka.clients.consumer.*;
@@ -8,66 +8,141 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
-import java.io.Closeable;
-import java.io.Serializable;
 import java.util.*;
 
 /**
- * kafka偏移量工具类
+ * kafka偏移量工具
  *
- * @author 孙宇
+ * @author SunYu
  */
-public class KafkaOffsetUtil implements Serializable, Closeable {
+public class KafkaOffsetUtil implements AutoCloseable {
     private final Log log = LogFactory.get();
+    private final Config config;
 
-    private final Properties config = new Properties();
-    private Consumer<String, String> consumer;//消费者对象
-    private List<String> topics;//消费主题列表
-    private final List<TopicPartition> topicPartitions = new ArrayList<>();
+    public static Builder builder() {
+        return new Builder();
+    }
 
-    /**
-     * 设置kafka地址
-     *
-     * @param servers kafka地址，多个地址使用英文半角逗号分割(cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092)
-     * @return
-     */
-    public KafkaOffsetUtil bootstrapServers(String servers) {
-        config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
-        return this;
+    private KafkaOffsetUtil(Config config) {
+        log.info("[创建kafka偏移量工具] 开始");
+        if (!config.props.containsKey(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG)) {
+            throw new RuntimeException("[参数错误] bootstrapServers不能为空");
+        }
+        if (!config.props.containsKey(ConsumerConfig.GROUP_ID_CONFIG)) {
+            throw new RuntimeException("[参数错误] groupId不能为空");
+        }
+        if (CollUtil.isEmpty(config.topics)) {
+            throw new RuntimeException("[参数错误] topic不能为空");
+        }
+        if (config.props.containsKey(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)) {
+            String reset = config.props.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG);
+            if (!reset.equals(OffsetResetStrategy.EARLIEST.name().toLowerCase()) && !reset.equals(OffsetResetStrategy.LATEST.name().toLowerCase())) {
+                throw new RuntimeException("[参数错误] autoOffsetReset参数不在参数范围内 传递值 " + reset + " 参数范围 [" + OffsetResetStrategy.EARLIEST.name().toLowerCase() + "," + OffsetResetStrategy.LATEST.name().toLowerCase() + "]");
+            }
+        }
+        //config.props.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
+        config.props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);//禁用自动提交
+        config.props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        config.props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        config.consumer = new KafkaConsumer<>(config.props);
+        for (String topic : config.topics) {
+            List<PartitionInfo> partitionInfos = config.consumer.partitionsFor(topic);
+            for (PartitionInfo partitionInfo : partitionInfos) {
+                TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
+                config.topicPartitions.add(topicPartition);
+            }
+        }
+        config.consumer.assign(config.topicPartitions);
+        log.info("[创建kafka偏移量工具] 结束");
+        this.config = config;
+    }
+
+    private static class Config {
+        private Consumer<String, String> consumer;//消费者对象
+        private final Properties props = new Properties();// Kafka配置属性
+        private final List<String> topics = new ArrayList<>();//消费主题列表
+        private final List<TopicPartition> topicPartitions = new ArrayList<>();//主题与分区信息
+    }
+
+    public static class Builder {
+        private final Config config = new Config();
+
+        public KafkaOffsetUtil build() {
+            return new KafkaOffsetUtil(config);
+        }
+
+        /**
+         * 配置kafka地址
+         *
+         * @param servers kafka地址，多个地址使用英文半角逗号分割(cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092)
+         * @return
+         */
+        public Builder bootstrapServers(String servers) {
+            config.props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, servers);
+            return this;
+        }
+
+        /**
+         * 配置消费组id
+         *
+         * @param groupId 消费组id
+         * @return
+         */
+        public Builder groupId(String groupId) {
+            config.props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+            return this;
+        }
+
+        /**
+         * 加入一个主题
+         *
+         * @param topic 主题
+         * @return
+         */
+        public Builder topic(String topic) {
+            if (!config.topics.contains(topic)) {
+                config.topics.add(topic);
+            }
+            return this;
+        }
+
+        /**
+         * 加入多个主题
+         *
+         * @param topics
+         * @return
+         */
+        public Builder topics(Collection<String> topics) {
+            if (CollUtil.isNotEmpty(topics)) {
+                for (String topic : topics) {
+                    topic(topic);
+                }
+            }
+            return this;
+        }
+
+        /**
+         * 配置auto.offset.reset
+         *
+         * @param reset 取值范围：earliest、latest
+         * @return
+         */
+        public Builder autoOffsetReset(String reset) {
+            config.props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, reset);
+            return this;
+        }
     }
 
     /**
-     * 设置消费者组
-     *
-     * @param id 组id
-     * @return
+     * 回收资源
      */
-    public KafkaOffsetUtil groupId(String id) {
-        config.put(ConsumerConfig.GROUP_ID_CONFIG, id);
-        return this;
+    @Override
+    public void close() {
+        log.info("[回收kafka偏移量工具] 开始");
+        config.consumer.close();
+        log.info("[回收kafka偏移量工具] 结束");
     }
 
-    /**
-     * 设置topic集合
-     *
-     * @param topics 主题集合
-     * @return
-     */
-    public KafkaOffsetUtil topics(List<String> topics) {
-        this.topics = topics;
-        return this;
-    }
-
-    /**
-     * 设置topic
-     *
-     * @param topic 主题
-     * @return
-     */
-    public KafkaOffsetUtil topic(String topic) {
-        topics = Collections.singletonList(topic);
-        return this;
-    }
 
     /**
      * 获得主题与分区信息
@@ -75,218 +150,91 @@ public class KafkaOffsetUtil implements Serializable, Closeable {
      * @return
      */
     public List<TopicPartition> getTopicPartitions() {
-        return topicPartitions;
+        return config.topicPartitions;
     }
 
     /**
-     * 获取主题的分区信息
+     * 获得Earliest的偏移量
      *
-     * @param topic
-     * @return
+     * @param topicPartition
+     * @return 偏移量
      */
-    public List<TopicPartition> getPartitions(String topic) {
-        List<TopicPartition> partitions = new ArrayList<>();
-        for (TopicPartition topicPartition : topicPartitions) {
-            if (topicPartition.topic().equals(topic)) {
-                partitions.add(topicPartition);
-            }
-        }
-        return partitions;
-    }
-
-
-    /**
-     * 调整偏移量
-     *
-     * @param topic     主题
-     * @param partition 分区号
-     * @param offset    偏移量
-     */
-    public void seek(String topic, int partition, long offset) {
-        TopicPartition topicPartition = new TopicPartition(topic, partition);
-        consumer.seek(topicPartition, offset);
-        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-        offsets.put(topicPartition, new OffsetAndMetadata(offset));
-        consumer.commitSync(offsets);
+    public long getEarliestOffset(TopicPartition topicPartition) {
+        config.consumer.seekToBeginning(topicPartition);
+        return config.consumer.position(topicPartition);
     }
 
     /**
-     * 调整偏移量到LATEST
+     * 获得Latest的偏移量
      *
-     * @param topic     主题
-     * @param partition 分区号
+     * @param topicPartition
+     * @return 偏移量
      */
-    public void seekToEnd(String topic, int partition) {
-        TopicPartition topicPartition = new TopicPartition(topic, partition);
-        consumer.seekToEnd(topicPartition);
-        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-        long offset = consumer.position(topicPartition);
-        offsets.put(topicPartition, new OffsetAndMetadata(offset));
-        consumer.commitSync(offsets);
+    public long getLatestOffset(TopicPartition topicPartition) {
+        config.consumer.seekToEnd(topicPartition);
+        return config.consumer.position(topicPartition);
     }
 
     /**
-     * 调整偏移量到EARLIEST
+     * 获得当前的偏移量
      *
-     * @param topic     主题
-     * @param partition 分区号
+     * @param topicPartition
+     * @return 偏移量
      */
-    public void seekToBeginning(String topic, int partition) {
-        TopicPartition topicPartition = new TopicPartition(topic, partition);
-        consumer.seekToBeginning(topicPartition);
-        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-        long offset = consumer.position(topicPartition);
-        offsets.put(topicPartition, new OffsetAndMetadata(offset));
-        consumer.commitSync(offsets);
-    }
-
-    /**
-     * 获得最初的offset
-     *
-     * @return
-     */
-    public Map<TopicPartition, OffsetAndMetadata> offsetEarliest() {
-        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-        for (TopicPartition topicPartition : topicPartitions) {
-            consumer.seekToBeginning(topicPartition);
-            long offset = consumer.position(topicPartition);
-            //log.info("EARLIEST offset {}-{} {}", topic, topicPartition.partition(), offset);
-            offsets.put(topicPartition, new OffsetAndMetadata(offset));
-        }
-        return offsets;
-    }
-
-    /**
-     * 获得最后的offset
-     *
-     * @return
-     */
-    public Map<TopicPartition, OffsetAndMetadata> offsetLatest() {
-        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-        for (TopicPartition topicPartition : topicPartitions) {
-            consumer.seekToEnd(topicPartition);
-            long offset = consumer.position(topicPartition);
-            //log.info("LATEST offset {}-{} {}", topic, topicPartition.partition(), offset);
-            offsets.put(topicPartition, new OffsetAndMetadata(offset));
-        }
-        return offsets;
-    }
-
-    /**
-     * 获得当前的offset
-     *
-     * @return
-     */
-    public Map<TopicPartition, OffsetAndMetadata> offsetCurrent() {
-        Map<TopicPartition, OffsetAndMetadata> offsets = new HashMap<>();
-        for (TopicPartition topicPartition : topicPartitions) {
-            OffsetAndMetadata committed = consumer.committed(topicPartition);
-            if (committed != null) {
-                //log.info("CURRENT group offset {}-{} {}", topic, topicPartition.partition(), committed.offset());
-                offsets.put(topicPartition, new OffsetAndMetadata(committed.offset()));
+    public long getCurrentOffset(TopicPartition topicPartition) {
+        OffsetAndMetadata committed = config.consumer.committed(topicPartition);
+        if (committed != null) {
+            return committed.offset();
+        } else {
+            String reset = config.props.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase());
+            if (reset.equals(OffsetResetStrategy.EARLIEST.name().toLowerCase())) {
+                config.consumer.seekToBeginning(topicPartition);
             } else {
-                if (config.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG).equalsIgnoreCase(OffsetResetStrategy.LATEST.name())) {
-                    consumer.seekToEnd(topicPartition);
-                    long offset = consumer.position(topicPartition);
-                    //log.info("LATEST offset {}-{} {}", topic, topicPartition.partition(), offset);
-                    offsets.put(topicPartition, new OffsetAndMetadata(offset));
-                } else {
-                    consumer.seekToBeginning(topicPartition);
-                    long offset = consumer.position(topicPartition);
-                    //log.info("EARLIEST offset {}-{} {}", topic, topicPartition.partition(), offset);
-                    offsets.put(topicPartition, new OffsetAndMetadata(offset));
+                config.consumer.seekToEnd(topicPartition);
+            }
+            return config.consumer.position(topicPartition);
+        }
+    }
+
+    /**
+     * 修复当前组的偏移量
+     */
+    public void fixCurrentOffsets() {
+        log.info("[修复当前组的偏移量] 开始");
+        String reset = config.props.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase());
+        for (TopicPartition topicPartition : config.topicPartitions) {
+            long currentOffset = getCurrentOffset(topicPartition);
+            if (reset.equals(OffsetResetStrategy.EARLIEST.name().toLowerCase())) {
+                long earliestOffset = getEarliestOffset(topicPartition);
+                if (currentOffset < earliestOffset) {
+                    log.info("[修复偏移量] 主题:{} 分区:{} {} fix-> {}", topicPartition.topic(), topicPartition.partition(), currentOffset, earliestOffset);
+                    seekAndCommit(topicPartition, earliestOffset);
+                }
+            } else {
+                long latestOffset = getLatestOffset(topicPartition);
+                if (currentOffset > latestOffset) {
+                    log.info("[修复偏移量] 主题:{} 分区:{} {} fix-> {}", topicPartition.topic(), topicPartition.partition(), currentOffset, latestOffset);
+                    seekAndCommit(topicPartition, latestOffset);
                 }
             }
         }
-        // todo 修正offset，避免超出range
-        Map<TopicPartition, OffsetAndMetadata> earliest = offsetEarliest();
-        earliest.forEach((topicPartition, offsetAndMetadata) -> {
-            OffsetAndMetadata cur = offsets.get(topicPartition);
-            if (cur == null) {
-                offsets.put(topicPartition, offsetAndMetadata);
-            } else if (cur.offset() < offsetAndMetadata.offset()) {
-                log.warn("当前 {}-{} 小于偏移量范围 {} < {} 进行修正", topicPartition.topic(), topicPartition.partition(), cur.offset(), offsetAndMetadata.offset());
-                offsets.put(topicPartition, offsetAndMetadata);
-            }
-        });
-        Map<TopicPartition, OffsetAndMetadata> latest = offsetLatest();
-        latest.forEach((topicPartition, offsetAndMetadata) -> {
-            OffsetAndMetadata cur = offsets.get(topicPartition);
-            if (cur == null) {
-                offsets.put(topicPartition, offsetAndMetadata);
-            } else if (cur.offset() > offsetAndMetadata.offset()) {
-                log.warn("当前 {}-{} 大于偏移量范围 {} > {} 进行修正", topicPartition.topic(), topicPartition.partition(), cur.offset(), offsetAndMetadata.offset());
-                offsets.put(topicPartition, offsetAndMetadata);
-            }
-        });
-        return offsets;
+        log.info("[修复当前组的偏移量] 结束");
     }
 
     /**
-     * 私有构造函数，防止外部实例化
-     */
-    private KafkaOffsetUtil() {
-    }
-
-    /**
-     * 新建工具类工厂
+     * 改变当前组的偏移量
      *
-     * @return
+     * @param topicPartition
+     * @param offset
      */
-    public static KafkaOffsetUtil builder() {
-        return new KafkaOffsetUtil();
+    public void seekAndCommit(TopicPartition topicPartition, long offset) {
+        log.debug("[改变偏移量] 组:{} 主题:{} 分区:{} 偏移量:{}", config.props.get(ConsumerConfig.GROUP_ID_CONFIG), topicPartition.topic(), topicPartition.partition(), offset);
+        config.consumer.pause(topicPartition);
+        config.consumer.seek(topicPartition, offset);
+        config.consumer.commitSync(new HashMap<TopicPartition, OffsetAndMetadata>() {{
+            put(topicPartition, new OffsetAndMetadata(offset));
+        }});
+        config.consumer.resume(topicPartition);
     }
-
-
-    public KafkaOffsetUtil build(Properties config) {
-        log.info("构建偏移量工具开始");
-        config.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
-        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        if (!config.containsKey(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)) {
-            config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
-        }
-        if (!config.containsKey(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG)) {
-            config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        }
-        if (!config.containsKey(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG)) {
-            config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        }
-        this.config.putAll(config);
-        consumer = new KafkaConsumer<>(config);
-        for (String topic : topics) {
-            List<PartitionInfo> partitionInfos = consumer.partitionsFor(topic);
-            for (PartitionInfo partitionInfo : partitionInfos) {
-                TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
-                topicPartitions.add(topicPartition);
-            }
-        }
-        consumer.assign(topicPartitions);
-        log.info("构建偏移量工具完毕");
-        return this;
-    }
-
-    /**
-     * 构建工具类
-     *
-     * @return
-     */
-    public KafkaOffsetUtil build() {
-        //topics = Arrays.asList("US_GENERAL", "US_GENERAL_FB", "DS_RESPONSE_FB");
-        //config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092");
-        //config.put(ConsumerConfig.GROUP_ID_CONFIG, "test_group_sdk_kafka");
-        config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        config.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
-        config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // OffsetResetStrategy.LATEST.name().toLowerCase()
-        config.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        config.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        return build(config);
-    }
-
-    @Override
-    public void close() {
-        consumer.close();
-        log.info("销毁偏移量工具完毕");
-    }
-
 
 }
