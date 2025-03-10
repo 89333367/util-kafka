@@ -47,9 +47,13 @@ public class KafkaOffsetUtil implements AutoCloseable {
         config.consumer = new KafkaConsumer<>(config.props);
         for (String topic : config.topics) {
             List<PartitionInfo> partitionInfos = config.consumer.partitionsFor(topic);
-            for (PartitionInfo partitionInfo : partitionInfos) {
-                TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
-                config.topicPartitions.add(topicPartition);
+            if (CollUtil.isNotEmpty(partitionInfos)) {
+                for (PartitionInfo partitionInfo : partitionInfos) {
+                    TopicPartition topicPartition = new TopicPartition(topic, partitionInfo.partition());
+                    config.topicPartitions.add(topicPartition);
+                }
+            } else {
+                log.warn("[无分区信息] topic：{}", topic);
             }
         }
         config.consumer.assign(config.topicPartitions);
