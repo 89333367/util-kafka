@@ -86,4 +86,18 @@ public class TestProducer {
         kafkaProducerUtil.close();
     }
 
+    @Test
+    void t005() throws ExecutionException, InterruptedException {
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .build();
+
+        kafkaProducerUtil.send("GENERAL_MSG", "5", "{\"ts\":\"20250318152143\",\"qos\":2,\"pType\":\"g4\",\"mType\":\"5_1\",\"data\":{\"startTime\":\"20250318152134\",\"startLon\":116.346111,\"startLat\":40.036786,\"did\":\"TEST202409209658\",\"code\":\"100_16_64_999\",\"userCode\":\"208\"}}").get();
+
+        kafkaProducerUtil.flush();
+
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
+    }
+
 }
