@@ -293,8 +293,8 @@ public class KafkaConsumerUtil implements AutoCloseable {
                     }
                     recordsCommitOffsets.put(topicPartition, new OffsetAndMetadata(record.offset() + 1));
                 }
-                log.debug("[recordsFirstOffsets] {}", recordsFirstOffsets);
-                log.debug("[recordsCommitOffsets] {}", recordsCommitOffsets);
+                log.debug("[批量消息第一条offset] {}", recordsFirstOffsets);
+                log.debug("[批量消息准备提交offset] {}", recordsCommitOffsets);
                 recordsHandler.accept(records); // 调用回调函数处理消息
                 try {
                     config.lock.lock();
