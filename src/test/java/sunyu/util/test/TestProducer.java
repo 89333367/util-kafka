@@ -88,11 +88,16 @@ public class TestProducer {
 
     @Test
     void t005() throws ExecutionException, InterruptedException {
-        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+        /*KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
                 .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .build();*/
+
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .build();
 
-        kafkaProducerUtil.send("GENERAL_MSG", "5", "{\"ts\":\"20250318152143\",\"qos\":2,\"pType\":\"g4\",\"mType\":\"5_1\",\"data\":{\"startTime\":\"20250318152134\",\"startLon\":116.346111,\"startLat\":40.036786,\"did\":\"TEST202409209658\",\"code\":\"100_16_64_999\",\"userCode\":\"208\"}}").get();
+        //kafkaProducerUtil.send("GENERAL_MSG", "5", "{\"ts\":\"20250322081923\",\"qos\":2,\"pType\":\"g4\",\"mType\":\"5_1\",\"data\":{\"startTime\":\"20250322081910\",\"startLon\":119.790028,\"startLat\":40.732983,\"did\":\"TESTDID0000000001\",\"code\":\"EC00000000O17000101\",\"userCode\":\"243\"}}").get();
+        kafkaProducerUtil.send("GENERAL_MSG", "5", "{\"ts\":\"20250322081953\",\"qos\":2,\"pType\":\"g4\",\"mType\":\"5_2\",\"data\":{\"startTime\":\"20250322081910\",\"startLon\":119.790028,\"startLat\":40.732983,\"endLon\":119.790039,\"endLat\":40.732974,\"did\":\"TESTDID0000000001\",\"code\":\"EC00000000O17000101\",\"userCode\":\"243\",\"endTime\":\"20250322081939\"}}").get();
 
         kafkaProducerUtil.flush();
 
