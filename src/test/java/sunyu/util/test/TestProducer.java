@@ -1,5 +1,6 @@
 package sunyu.util.test;
 
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -98,6 +99,41 @@ public class TestProducer {
 
         //kafkaProducerUtil.send("GENERAL_MSG", "5", "{\"ts\":\"20250322081923\",\"qos\":2,\"pType\":\"g4\",\"mType\":\"5_1\",\"data\":{\"startTime\":\"20250322081910\",\"startLon\":119.790028,\"startLat\":40.732983,\"did\":\"TESTDID0000000001\",\"code\":\"EC00000000O17000101\",\"userCode\":\"243\"}}").get();
         kafkaProducerUtil.send("GENERAL_MSG", "5", "{\"ts\":\"20250322081953\",\"qos\":2,\"pType\":\"g4\",\"mType\":\"5_2\",\"data\":{\"startTime\":\"20250322081910\",\"startLon\":119.790028,\"startLat\":40.732983,\"endLon\":119.790039,\"endLat\":40.732974,\"did\":\"TESTDID0000000001\",\"code\":\"EC00000000O17000101\",\"userCode\":\"243\",\"endTime\":\"20250322081939\"}}").get();
+
+        kafkaProducerUtil.flush();
+
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
+    }
+
+    @Test
+    void t006() {
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .build();
+
+        for (String line : FileUtil.readUtf8Lines("d:/tmp/FARM_WORK_OUTLINE-2.log")) {
+            log.info("{}", line);
+            kafkaProducerUtil.send("FARM_WORK_OUTLINE", null, line);
+        }
+
+        kafkaProducerUtil.flush();
+
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
+    }
+
+
+    @Test
+    void t007() {
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .build();
+
+        for (String line : FileUtil.readUtf8Lines("d:/tmp/FARM_FIX-1.log")) {
+            log.info("{}", line);
+            kafkaProducerUtil.send("FARM_FIX", null, line);
+        }
 
         kafkaProducerUtil.flush();
 
