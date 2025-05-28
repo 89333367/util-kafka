@@ -35,7 +35,7 @@
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
-            <version>5.8.36</version>
+            <version>5.8.38</version>
         </dependency>
         <!-- https://central.sonatype.com/artifact/org.apache.kafka/kafka-clients/versions -->
         <dependency>
@@ -47,7 +47,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.12.1</version>
+            <version>5.12.2</version>
             <scope>test</scope>
         </dependency>
         <!-- https://central.sonatype.com/artifact/log4j/log4j/versions -->
@@ -128,7 +128,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.2</version>
+                <version>3.5.3</version>
                 <configuration>
                     <skip>true</skip>
                 </configuration>
