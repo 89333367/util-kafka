@@ -1,6 +1,11 @@
 package sunyu.util.test;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.LineHandler;
+import cn.hutool.core.thread.ThreadUtil;
+import cn.hutool.core.util.CharsetUtil;
+import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -8,8 +13,11 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.jupiter.api.Test;
 import sunyu.util.KafkaProducerUtil;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestProducer {
     Log log = LogFactory.get();
@@ -136,6 +144,67 @@ public class TestProducer {
         }
 
         kafkaProducerUtil.flush();
+
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
+    }
+
+    @Test
+    void t008() {
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .build();
+
+        for (String line : FileUtil.readLines("d:/tmp/5_2_0701.log", "utf16")) {
+            if (StrUtil.isNotBlank(line) && JSONUtil.isTypeJSON(line)) {
+                log.info("{}", line);
+                kafkaProducerUtil.send("GENERAL_MSG", "5", line);
+            }
+        }
+
+        kafkaProducerUtil.flush();
+
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
+    }
+
+    @Test
+    void t009() {
+        List<String> l = new ArrayList<>();
+        AtomicInteger i = new AtomicInteger();
+        FileUtil.readLines(FileUtil.file("d:/tmp/sendalarmkafka/5_2.log"), CharsetUtil.charset("utf16"), (LineHandler) line -> {
+            if (StrUtil.isNotBlank(line) && JSONUtil.isTypeJSON(line)) {
+                log.info("{}", line);
+                l.add(line);
+                if (l.size() >= 1000) {
+                    FileUtil.writeUtf8Lines(l, StrUtil.format("d:/tmp/sendalarmkafka/db/{}.txt", i.incrementAndGet()));
+                    l.clear();
+                }
+            }
+        });
+        if (!l.isEmpty()) {
+            FileUtil.writeUtf8Lines(l, StrUtil.format("d:/tmp/sendalarmkafka/db/{}.txt", i.incrementAndGet()));
+            l.clear();
+        }
+    }
+
+    @Test
+    void t010() {
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .build();
+        for (int i = 108; i < 877; i++) {
+            String path = StrUtil.format("d:/tmp/sendalarmkafka/db/{}.txt", i);
+            for (String line : FileUtil.readUtf8Lines(path)) {
+                if (StrUtil.isNotBlank(line) && JSONUtil.isTypeJSON(line)) {
+                    //log.info("{}", line);
+                    kafkaProducerUtil.send("GENERAL_MSG", "5", line);
+                }
+            }
+            kafkaProducerUtil.flush();
+            log.info("{} 处理完毕", path);
+            ThreadUtil.sleep(1000 * 20);
+        }
 
         //项目关闭前要回收资源
         kafkaProducerUtil.close();
