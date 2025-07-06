@@ -193,7 +193,7 @@ public class TestProducer {
         KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
                 .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
                 .build();
-        for (int i = 108; i < 877; i++) {
+        for (int i = 877; i <= 877; i++) {
             String path = StrUtil.format("d:/tmp/sendalarmkafka/db/{}.txt", i);
             for (String line : FileUtil.readUtf8Lines(path)) {
                 if (StrUtil.isNotBlank(line) && JSONUtil.isTypeJSON(line)) {
