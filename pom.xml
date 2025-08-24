@@ -66,27 +66,41 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.6.0</version>
-                <configuration>
-                    <!-- 打包时是否生成dependency-reduced-pom.xml -->
-                    <createDependencyReducedPom>false</createDependencyReducedPom>
-                    <!--只包含该项目代码中用到的jar,在父项目中引入了，但在当前模块中没有用到就会被删掉-->
-                    <minimizeJar>true</minimizeJar>
-                    <!-- 重命名包名解决冲突 -->
-                    <relocations>
-                        <relocation>
-                            <pattern>org.apache.kafka</pattern>
-                            <shadedPattern>relocation.org.apache.kafka</shadedPattern>
-                        </relocation>
-                    </relocations>
-                </configuration>
                 <executions>
                     <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
                         <configuration>
+                            <!-- 添加以下配置来禁用 dependency-reduced-pom.xml 文件生成 -->
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <relocations>
+                                <!--<relocation>
+                                    <pattern>com.fasterxml.jackson</pattern>
+                                    <shadedPattern>shaded.com.fasterxml.jackson</shadedPattern>
+                                </relocation>-->
+                            </relocations>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>shaded</shadedClassifierName>
                             <filters>
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
+                                        <exclude>assets/**</exclude>
+                                        <exclude>license/**</exclude>
                                         <exclude>META-INF/**</exclude>
+                                        <exclude>mozilla/**</exclude>
+                                        <exclude>schema/**</exclude>
+                                        <exclude>model/**</exclude>
+                                        <exclude>*.crx</exclude>
+                                        <exclude>*.properties</exclude>
+                                        <exclude>*.xml</exclude>
+                                        <exclude>*.ini</exclude>
+                                        <exclude>*.html</exclude>
+                                        <exclude>*.mappings</exclude>
+                                        <exclude>*.png</exclude>
+
                                         <exclude>LICENSE</exclude>
                                         <exclude>NOTICE</exclude>
                                         <exclude>darwin/**</exclude>
@@ -94,15 +108,10 @@
                                         <exclude>org/xerial/**</exclude>
                                         <exclude>win32/**</exclude>
                                         <exclude>kafka/kafka-version.properties</exclude>
-                                        <exclude>log4j.properties</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
                         </configuration>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>shade</goal>
-                        </goals>
                     </execution>
                 </executions>
             </plugin>
@@ -140,9 +149,9 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.0</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                    <encoding>UTF-8</encoding>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <encoding>${project.build.sourceEncoding}</encoding>
                 </configuration>
             </plugin>
         </plugins>

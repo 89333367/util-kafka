@@ -19,6 +19,7 @@
     <artifactId>util-kafka</artifactId>
     <!-- {kafka-clients.version}_{util.version}_{jdk.version}_{architecture.version} -->
     <version>0.9.0.1_1.0_jdk8_x64</version>
+    <classifier>shaded</classifier>
 </dependency>
 ```
 
