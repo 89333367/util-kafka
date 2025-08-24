@@ -93,6 +93,17 @@
                                         <exclude>mozilla/**</exclude>
                                         <exclude>schema/**</exclude>
                                         <exclude>model/**</exclude>
+                                        <exclude>darwin/**</exclude>
+                                        <exclude>linux/**</exclude>
+                                        <exclude>org/xerial/**</exclude>
+                                        <exclude>win32/**</exclude>
+                                        <exclude>kafka/**</exclude>
+                                        <exclude>support/**</exclude>
+                                        <exclude>tables/**</exclude>
+                                        <exclude>tpcds/**</exclude>
+                                        <exclude>tpch/**</exclude>
+                                        <exclude>edu/**</exclude>
+
                                         <exclude>*.crx</exclude>
                                         <exclude>*.properties</exclude>
                                         <exclude>*.xml</exclude>
@@ -100,14 +111,10 @@
                                         <exclude>*.html</exclude>
                                         <exclude>*.mappings</exclude>
                                         <exclude>*.png</exclude>
+                                        <exclude>*.dtd</exclude>
 
                                         <exclude>LICENSE</exclude>
                                         <exclude>NOTICE</exclude>
-                                        <exclude>darwin/**</exclude>
-                                        <exclude>linux/**</exclude>
-                                        <exclude>org/xerial/**</exclude>
-                                        <exclude>win32/**</exclude>
-                                        <exclude>kafka/kafka-version.properties</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
