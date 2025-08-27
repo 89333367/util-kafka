@@ -35,7 +35,7 @@
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
-            <version>5.8.39</version>
+            <version>5.8.40</version>
         </dependency>
         <!-- https://central.sonatype.com/artifact/org.apache.kafka/kafka-clients/versions -->
         <dependency>
@@ -87,7 +87,7 @@
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
-                                        <exclude>assets/**</exclude>
+                                        <!--<exclude>assets/**</exclude>
                                         <exclude>license/**</exclude>
                                         <exclude>META-INF/**</exclude>
                                         <exclude>mozilla/**</exclude>
@@ -114,7 +114,7 @@
                                         <exclude>*.dtd</exclude>
 
                                         <exclude>LICENSE</exclude>
-                                        <exclude>NOTICE</exclude>
+                                        <exclude>NOTICE</exclude>-->
                                     </excludes>
                                 </filter>
                             </filters>
