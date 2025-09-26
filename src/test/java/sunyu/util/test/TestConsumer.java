@@ -48,12 +48,12 @@ public class TestConsumer {
         KafkaConsumerUtil kafkaConsumerUtil = KafkaConsumerUtil.builder()
                 .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
                 .groupId("test_group_kafka_consumer_util")
-                .topic("GENERAL_MSG")
+                .topic("datafileexchange.task")
                 .build();
 
         kafkaConsumerUtil.pollRecord(record -> {
             log.info("收到消息 {}", record);
-            ThreadUtil.sleep(1000 * 30);//模拟处理时间
+            //ThreadUtil.sleep(1000 * 30);//模拟处理时间
         });
 
         kafkaConsumerUtil.close();

@@ -25,11 +25,11 @@ public class TestProducer {
     @Test
     void t001() {
         KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
-                .bootstrapServers("cdh-kafka1:9092,cdh-kafka2:9092,cdh-kafka3:9092")
+                .bootstrapServers("192.168.11.136:9092,192.168.11.138:9092,192.168.11.152:9092")
                 .build();
 
         //发送消息
-        kafkaProducerUtil.send("主题", "键，这里可以为null", "值");
+        kafkaProducerUtil.send("datafileexchange.task", "1971191895549308928", "{\"headers\":{\"userId\":\"1\",\"machineType\":\"1\",\"orgId\":\"1\",\"rootOrgId\":\"1\",\"opDevice\":\"1\",\"orgPath\":\"1#\",\"origin\":\"https://bcnytest.bcnyyun.com\",\"tenantId\":\"1\",\"token\":\"7d8168cf1690411d936d8bcaba0872d1\",\"realName\":\"于艳涛2233\",\"username\":\"Admin\",\"realIp\":\"10.20.1.1\",\"roleIds\":null},\"type\":\"add\",\"timestamp\":\"2025-09-25 20:35:45\",\"data\":{\"id\":\"1971191895549308928\"}}");
 
         //关闭之前，或者想让消息立刻发送，可以调用一下flush刷新缓存
         kafkaProducerUtil.flush();
