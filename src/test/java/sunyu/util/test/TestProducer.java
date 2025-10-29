@@ -210,4 +210,47 @@ public class TestProducer {
         kafkaProducerUtil.close();
     }
 
+
+    @Test
+    void t011() {
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .build();
+
+        for (String line : FileUtil.readUtf8Lines("d:/tmp/869066063758693.txt")) {
+            if (line.startsWith("\"")) {
+                String p = StrUtil.strip(line, "\"");
+                String[] split = p.split("\\$");
+                log.info("{} {}", split[2], p);
+                kafkaProducerUtil.send("US_GENERAL_NJ", split[2], p);
+            }
+        }
+
+        /*for (String line : FileUtil.readLines()) {
+            if (StrUtil.isNotBlank(line) && JSONUtil.isTypeJSON(line)) {
+                log.info("{}", line);
+                kafkaProducerUtil.send("GENERAL_MSG", "5", line);
+            }
+        }*/
+
+        kafkaProducerUtil.flush();
+
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
+    }
+
+    @Test
+    void t012() {
+        KafkaProducerUtil kafkaProducerUtil = KafkaProducerUtil.builder()
+                .bootstrapServers("kafka005:9092,kafka015:9092,kafka016:9092")
+                .build();
+
+        kafkaProducerUtil.send("FARM_FIX","EC73BD2503190034",FileUtil.readUtf8String("d:/tmp/send.txt"));
+
+        kafkaProducerUtil.flush();
+
+        //项目关闭前要回收资源
+        kafkaProducerUtil.close();
+    }
+
 }
