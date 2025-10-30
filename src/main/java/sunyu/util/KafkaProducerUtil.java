@@ -1,14 +1,19 @@
 package sunyu.util;
 
+import java.util.Properties;
+import java.util.concurrent.Future;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.serialization.StringSerializer;
+
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.producer.*;
-import org.apache.kafka.common.serialization.StringSerializer;
-
-import java.util.Properties;
-import java.util.concurrent.Future;
 
 /**
  * Kafka生产者工具类
@@ -36,7 +41,7 @@ public class KafkaProducerUtil implements AutoCloseable {
      * @param config 配置信息
      */
     private KafkaProducerUtil(Config config) {
-        log.info("[创建kafka生产者] 开始");
+        log.info("[构建{}] 开始", this.getClass().getSimpleName());
         // 配置客户端id
         //config.props.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());
         config.props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
@@ -48,14 +53,15 @@ public class KafkaProducerUtil implements AutoCloseable {
                     && !config.props.get(ProducerConfig.ACKS_CONFIG).equals("-1")
                     && !config.props.get(ProducerConfig.ACKS_CONFIG).equals("all")) {
                 // 若不合法，记录错误日志并抛出异常
-                String err = StrUtil.format("[参数错误] acks参数不在参数范围内 传递值 {} 参数范围 [0,1,-1,all]", config.props.get(ProducerConfig.ACKS_CONFIG));
+                String err = StrUtil.format("[参数错误] acks参数不在参数范围内 传递值 {} 参数范围 [0,1,-1,all]",
+                        config.props.get(ProducerConfig.ACKS_CONFIG));
                 log.error(err);
                 throw new RuntimeException(err);
             }
         }
         // 创建Kafka生产者实例
         config.producer = new KafkaProducer<>(config.props);
-        log.info("[创建kafka生产者] 结束");
+        log.info("[构建{}] 结束", this.getClass().getSimpleName());
         this.config = config;
     }
 
@@ -120,7 +126,7 @@ public class KafkaProducerUtil implements AutoCloseable {
      */
     @Override
     public void close() {
-        log.info("[回收kafka生产者] 开始");
+        log.info("[销毁{}] 开始", this.getClass().getSimpleName());
 
         log.info("[刷新缓存] 开始");
         flush();
@@ -130,7 +136,7 @@ public class KafkaProducerUtil implements AutoCloseable {
         config.producer.close();
         log.info("[关闭生产者] 结束");
 
-        log.info("[回收kafka生产者] 结束");
+        log.info("[销毁{}] 结束", this.getClass().getSimpleName());
     }
 
     /**

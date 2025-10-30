@@ -1,16 +1,29 @@
 package sunyu.util;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.locks.ReentrantLock;
+
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.StringDeserializer;
+
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.exceptions.ExceptionUtil;
 import cn.hutool.core.thread.ThreadUtil;
 import cn.hutool.log.Log;
 import cn.hutool.log.LogFactory;
-import org.apache.kafka.clients.consumer.*;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.serialization.StringDeserializer;
-
-import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * kafka消费者工具
@@ -26,7 +39,7 @@ public class KafkaConsumerUtil implements AutoCloseable {
     }
 
     private KafkaConsumerUtil(Config config) {
-        log.info("[创建kafka消费者工具] 开始");
+        log.info("[构建{}] 开始", this.getClass().getSimpleName());
         if (!config.props.containsKey(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG)) {
             throw new RuntimeException("[参数错误] bootstrapServers不能为空");
         }
@@ -38,8 +51,11 @@ public class KafkaConsumerUtil implements AutoCloseable {
         }
         if (config.props.containsKey(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)) {
             String reset = config.props.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG);
-            if (!reset.equals(OffsetResetStrategy.EARLIEST.name().toLowerCase()) && !reset.equals(OffsetResetStrategy.LATEST.name().toLowerCase())) {
-                throw new RuntimeException("[参数错误] autoOffsetReset参数不在参数范围内 传递值 " + reset + " 参数范围 [" + OffsetResetStrategy.EARLIEST.name().toLowerCase() + "," + OffsetResetStrategy.LATEST.name().toLowerCase() + "]");
+            if (!reset.equals(OffsetResetStrategy.EARLIEST.name().toLowerCase())
+                    && !reset.equals(OffsetResetStrategy.LATEST.name().toLowerCase())) {
+                throw new RuntimeException("[参数错误] autoOffsetReset参数不在参数范围内 传递值 " + reset + " 参数范围 ["
+                        + OffsetResetStrategy.EARLIEST.name().toLowerCase() + ","
+                        + OffsetResetStrategy.LATEST.name().toLowerCase() + "]");
             }
         }
         //config.props.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
@@ -62,7 +78,8 @@ public class KafkaConsumerUtil implements AutoCloseable {
                  */
                 log.info("[消费者重新平衡] 开始");
                 if (CollUtil.isNotEmpty(partitions)) {
-                    log.info("{} 触发分区重平衡，平衡前拥有 {} 个分区 {}", config.props.getProperty(ConsumerConfig.GROUP_ID_CONFIG), partitions.size(), partitions);
+                    log.info("{} 触发分区重平衡，平衡前拥有 {} 个分区 {}", config.props.getProperty(ConsumerConfig.GROUP_ID_CONFIG),
+                            partitions.size(), partitions);
                 } else {
                     log.info("{} 进行分区平衡", config.props.getProperty(ConsumerConfig.GROUP_ID_CONFIG));
                 }
@@ -81,11 +98,12 @@ public class KafkaConsumerUtil implements AutoCloseable {
                  * 在这个方法中，消费者可以初始化资源或重置状态，准备处理新的分区
                  */
                 log.info("[重新分配分区] 开始");
-                log.info("{} 重新分配分区，拿到了 {} 个分区 {}", config.props.getProperty(ConsumerConfig.GROUP_ID_CONFIG), partitions.size(), partitions);
+                log.info("{} 重新分配分区，拿到了 {} 个分区 {}", config.props.getProperty(ConsumerConfig.GROUP_ID_CONFIG),
+                        partitions.size(), partitions);
                 log.info("[重新分配分区] 结束");
             }
         });
-        log.info("[创建kafka消费者工具] 结束");
+        log.info("[构建{}] 结束", this.getClass().getSimpleName());
         this.config = config;
         //增加心跳功能
         ThreadUtil.execute(this::heartbeat);
@@ -172,9 +190,9 @@ public class KafkaConsumerUtil implements AutoCloseable {
      */
     @Override
     public void close() {
-        log.info("[回收kafka消费者工具] 开始");
+        log.info("[销毁{}] 开始", this.getClass().getSimpleName());
         config.consumer.close();
-        log.info("[回收kafka消费者工具] 结束");
+        log.info("[销毁{}] 结束", this.getClass().getSimpleName());
     }
 
     /**
@@ -238,9 +256,11 @@ public class KafkaConsumerUtil implements AutoCloseable {
                     recordHandler.accept(record);
                     try {
                         config.lock.lock();
-                        HashMap<TopicPartition, OffsetAndMetadata> recordCommitOffset = new HashMap<TopicPartition, OffsetAndMetadata>() {{
-                            put(topicPartition, new OffsetAndMetadata(record.offset() + 1));
-                        }};
+                        HashMap<TopicPartition, OffsetAndMetadata> recordCommitOffset = new HashMap<TopicPartition, OffsetAndMetadata>() {
+                            {
+                                put(topicPartition, new OffsetAndMetadata(record.offset() + 1));
+                            }
+                        };
                         config.consumer.commitSync(recordCommitOffset);
                         log.info("[消息处理成功] 偏移量修改为 {}", recordCommitOffset);
                     } finally {
@@ -267,7 +287,8 @@ public class KafkaConsumerUtil implements AutoCloseable {
      * @param pollTime       拉取时间，单位毫秒，时间越长，拉取数据越多，可以传递null，默认50毫秒
      * @param recordsHandler 拉取到的消息处理函数
      */
-    public void pollRecords(Long pollTime, java.util.function.Consumer<ConsumerRecords<String, String>> recordsHandler) {
+    public void pollRecords(Long pollTime,
+            java.util.function.Consumer<ConsumerRecords<String, String>> recordsHandler) {
         while (true) {
             Map<TopicPartition, Long> recordsFirstOffsets = new HashMap<>();
             Map<TopicPartition, OffsetAndMetadata> recordsCommitOffsets = new HashMap<>();

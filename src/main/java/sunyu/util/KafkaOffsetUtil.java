@@ -1,14 +1,24 @@
 package sunyu.util;
 
-import cn.hutool.core.collection.CollUtil;
-import cn.hutool.log.Log;
-import cn.hutool.log.LogFactory;
-import org.apache.kafka.clients.consumer.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
-import java.util.*;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.log.Log;
+import cn.hutool.log.LogFactory;
 
 /**
  * kafka偏移量工具
@@ -24,7 +34,7 @@ public class KafkaOffsetUtil implements AutoCloseable {
     }
 
     private KafkaOffsetUtil(Config config) {
-        log.info("[创建kafka偏移量工具] 开始");
+        log.info("[构建{}] 开始", this.getClass().getSimpleName());
         if (!config.props.containsKey(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG)) {
             throw new RuntimeException("[参数错误] bootstrapServers不能为空");
         }
@@ -36,8 +46,11 @@ public class KafkaOffsetUtil implements AutoCloseable {
         }
         if (config.props.containsKey(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG)) {
             String reset = config.props.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG);
-            if (!reset.equals(OffsetResetStrategy.EARLIEST.name().toLowerCase()) && !reset.equals(OffsetResetStrategy.LATEST.name().toLowerCase())) {
-                throw new RuntimeException("[参数错误] autoOffsetReset参数不在参数范围内 传递值 " + reset + " 参数范围 [" + OffsetResetStrategy.EARLIEST.name().toLowerCase() + "," + OffsetResetStrategy.LATEST.name().toLowerCase() + "]");
+            if (!reset.equals(OffsetResetStrategy.EARLIEST.name().toLowerCase())
+                    && !reset.equals(OffsetResetStrategy.LATEST.name().toLowerCase())) {
+                throw new RuntimeException("[参数错误] autoOffsetReset参数不在参数范围内 传递值 " + reset + " 参数范围 ["
+                        + OffsetResetStrategy.EARLIEST.name().toLowerCase() + ","
+                        + OffsetResetStrategy.LATEST.name().toLowerCase() + "]");
             }
         }
         //config.props.put(ConsumerConfig.CLIENT_ID_CONFIG, IdUtil.fastSimpleUUID());//配置客户端id
@@ -57,7 +70,7 @@ public class KafkaOffsetUtil implements AutoCloseable {
             }
         }
         config.consumer.assign(config.topicPartitions);
-        log.info("[创建kafka偏移量工具] 结束");
+        log.info("[构建{}] 结束", this.getClass().getSimpleName());
         this.config = config;
     }
 
@@ -142,11 +155,10 @@ public class KafkaOffsetUtil implements AutoCloseable {
      */
     @Override
     public void close() {
-        log.info("[回收kafka偏移量工具] 开始");
+        log.info("[销毁{}] 开始", this.getClass().getSimpleName());
         config.consumer.close();
-        log.info("[回收kafka偏移量工具] 结束");
+        log.info("[销毁{}] 结束", this.getClass().getSimpleName());
     }
-
 
     /**
      * 获得主题与分区信息
@@ -190,7 +202,8 @@ public class KafkaOffsetUtil implements AutoCloseable {
         if (committed != null) {
             return committed.offset();
         } else {
-            String reset = config.props.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase());
+            String reset = config.props.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                    OffsetResetStrategy.EARLIEST.name().toLowerCase());
             if (reset.equals(OffsetResetStrategy.EARLIEST.name().toLowerCase())) {
                 config.consumer.seekToBeginning(topicPartition);
             } else {
@@ -218,19 +231,22 @@ public class KafkaOffsetUtil implements AutoCloseable {
      */
     public void fixCurrentOffsets() {
         log.info("[修复当前组的偏移量] 开始");
-        String reset = config.props.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase());
+        String reset = config.props.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
+                OffsetResetStrategy.EARLIEST.name().toLowerCase());
         for (TopicPartition topicPartition : config.topicPartitions) {
             long currentOffset = getCurrentOffset(topicPartition);
             if (reset.equals(OffsetResetStrategy.EARLIEST.name().toLowerCase())) {
                 long earliestOffset = getEarliestOffset(topicPartition);
                 if (currentOffset < earliestOffset) {
-                    log.info("[修复偏移量] 主题:{} 分区:{} {} fix-> {}", topicPartition.topic(), topicPartition.partition(), currentOffset, earliestOffset);
+                    log.info("[修复偏移量] 主题:{} 分区:{} {} fix-> {}", topicPartition.topic(), topicPartition.partition(),
+                            currentOffset, earliestOffset);
                     seekAndCommit(topicPartition, earliestOffset);
                 }
             } else {
                 long latestOffset = getLatestOffset(topicPartition);
                 if (currentOffset > latestOffset) {
-                    log.info("[修复偏移量] 主题:{} 分区:{} {} fix-> {}", topicPartition.topic(), topicPartition.partition(), currentOffset, latestOffset);
+                    log.info("[修复偏移量] 主题:{} 分区:{} {} fix-> {}", topicPartition.topic(), topicPartition.partition(),
+                            currentOffset, latestOffset);
                     seekAndCommit(topicPartition, latestOffset);
                 }
             }
@@ -245,12 +261,15 @@ public class KafkaOffsetUtil implements AutoCloseable {
      * @param offset
      */
     public void seekAndCommit(TopicPartition topicPartition, long offset) {
-        log.debug("[改变偏移量] 组:{} 主题:{} 分区:{} 偏移量:{}", config.props.get(ConsumerConfig.GROUP_ID_CONFIG), topicPartition.topic(), topicPartition.partition(), offset);
+        log.debug("[改变偏移量] 组:{} 主题:{} 分区:{} 偏移量:{}", config.props.get(ConsumerConfig.GROUP_ID_CONFIG),
+                topicPartition.topic(), topicPartition.partition(), offset);
         config.consumer.pause(topicPartition);
         config.consumer.seek(topicPartition, offset);
-        config.consumer.commitSync(new HashMap<TopicPartition, OffsetAndMetadata>() {{
-            put(topicPartition, new OffsetAndMetadata(offset));
-        }});
+        config.consumer.commitSync(new HashMap<TopicPartition, OffsetAndMetadata>() {
+            {
+                put(topicPartition, new OffsetAndMetadata(offset));
+            }
+        });
         config.consumer.resume(topicPartition);
     }
 
