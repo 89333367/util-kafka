@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>sunyu.util</groupId>
@@ -35,7 +35,7 @@
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
-            <version>5.8.40</version>
+            <version>5.8.41</version>
         </dependency>
         <!-- https://central.sonatype.com/artifact/org.apache.kafka/kafka-clients/versions -->
         <dependency>
@@ -47,7 +47,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.13.4</version>
+            <version>5.14.0</version>
             <scope>test</scope>
         </dependency>
         <!-- https://central.sonatype.com/artifact/log4j/log4j/versions -->
@@ -61,7 +61,8 @@
 
     <build>
         <plugins>
-            <!-- https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-shade-plugin/versions -->
+            <!--
+            https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-shade-plugin/versions -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -87,34 +88,11 @@
                                 <filter>
                                     <artifact>*:*</artifact>
                                     <excludes>
-                                        <!--<exclude>assets/**</exclude>
-                                        <exclude>license/**</exclude>
-                                        <exclude>META-INF/**</exclude>
-                                        <exclude>mozilla/**</exclude>
-                                        <exclude>schema/**</exclude>
-                                        <exclude>model/**</exclude>
-                                        <exclude>darwin/**</exclude>
-                                        <exclude>linux/**</exclude>
-                                        <exclude>org/xerial/**</exclude>
-                                        <exclude>win32/**</exclude>
-                                        <exclude>kafka/**</exclude>
-                                        <exclude>support/**</exclude>
-                                        <exclude>tables/**</exclude>
-                                        <exclude>tpcds/**</exclude>
-                                        <exclude>tpch/**</exclude>
-                                        <exclude>edu/**</exclude>
-
-                                        <exclude>*.crx</exclude>
-                                        <exclude>*.properties</exclude>
-                                        <exclude>*.xml</exclude>
-                                        <exclude>*.ini</exclude>
-                                        <exclude>*.html</exclude>
-                                        <exclude>*.mappings</exclude>
-                                        <exclude>*.png</exclude>
-                                        <exclude>*.dtd</exclude>
-
-                                        <exclude>LICENSE</exclude>
-                                        <exclude>NOTICE</exclude>-->
+                                        <!-- 关键：移除签名文件，避免胖包校验失败 -->
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <!-- 可选：保留其他静态资源，必要时再按需排除 -->
                                     </excludes>
                                 </filter>
                             </filters>
@@ -124,7 +102,8 @@
             </plugin>
 
             <!-- 源码也上传到私服 -->
-            <!-- https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-source-plugin/versions -->
+            <!--
+            https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-source-plugin/versions -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -140,7 +119,8 @@
             </plugin>
 
             <!-- 跳过单元测试 -->
-            <!-- https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-surefire-plugin/versions -->
+            <!--
+            https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-surefire-plugin/versions -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -150,7 +130,8 @@
                 </configuration>
             </plugin>
 
-            <!-- https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-compiler-plugin/versions -->
+            <!--
+            https://central.sonatype.com/artifact/org.apache.maven.plugins/maven-compiler-plugin/versions -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
