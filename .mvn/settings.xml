@@ -2,16 +2,13 @@
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-    <!-- localRepository
-     | The path to the local repository maven will use to store artifacts.
-     |
-     | Default: ${user.home}/.m2/repository
-    <localRepository>/path/to/local/repo</localRepository>
-    -->
-    <pluginGroups>
-    </pluginGroups>
-    <proxies>
-    </proxies>
+    <!-- 本地仓库路径（保持默认） -->
+    <localRepository>${user.home}/.m2/repository</localRepository>
+
+    <pluginGroups></pluginGroups>
+    <proxies></proxies>
+
+    <!-- 私服账号（保留你的原有配置） -->
     <servers>
         <server>
             <id>releases</id>
@@ -24,25 +21,251 @@
             <password>admin123</password>
         </server>
     </servers>
+
+    <!-- 第一步：配置镜像映射（移除无效的blocked元素） -->
     <mirrors>
-    <!--
-    	<mirror>
-            <id>alibaba</id>
-            <mirrorOf>central</mirrorOf>
-            <url>http://maven.aliyun.com/nexus/content/groups/public</url>
-        </mirror>
+        <!-- 1. 公司私服镜像（最高优先级） -->
         <mirror>
-            <id>nutzcn</id>
-            <mirrorOf>central</mirrorOf>
-            <url>https://jfrog.nutz.cn/artifactory/jcenter</url>
-        </mirror>
-        -->
-        <mirror>
-            <id>nexus</id>
-            <mirrorOf>*</mirrorOf>
+            <id>mirror-nexus</id>
+            <name>Company Nexus Mirror</name>
             <url>http://192.168.13.86:8081/repository/maven-public/</url>
+            <mirrorOf>nexus-repo</mirrorOf>
+        </mirror>
+
+        <!-- 2. 阿里镜像 -->
+        <mirror>
+            <id>mirror-aliyun</id>
+            <name>Aliyun Maven Mirror</name>
+            <url>https://maven.aliyun.com/repository/public</url>
+            <mirrorOf>aliyun-repo</mirrorOf>
+        </mirror>
+
+        <!-- 3. 华为云镜像 -->
+        <mirror>
+            <id>mirror-huawei</id>
+            <name>Huawei Cloud Maven Mirror</name>
+            <url>https://repo.huaweicloud.com/repository/maven/</url>
+            <mirrorOf>huawei-repo</mirrorOf>
+        </mirror>
+
+        <!-- 4. 清华大学镜像 -->
+        <mirror>
+            <id>mirror-tsinghua</id>
+            <name>Tsinghua University Maven Mirror</name>
+            <url>https://mirrors.tuna.tsinghua.edu.cn/maven2/</url>
+            <mirrorOf>tsinghua-repo</mirrorOf>
+        </mirror>
+
+        <!-- 5. 中科大镜像 -->
+        <mirror>
+            <id>mirror-ustc</id>
+            <name>USTC Maven Mirror</name>
+            <url>https://mirrors.ustc.edu.cn/maven/maven2/</url>
+            <mirrorOf>ustc-repo</mirrorOf>
+        </mirror>
+
+        <!-- 6. Sonatype 镜像 -->
+        <mirror>
+            <id>mirror-sonatype</id>
+            <name>Sonatype Central Mirror</name>
+            <url>https://oss.sonatype.org/content/groups/public/</url>
+            <mirrorOf>sonatype-repo</mirrorOf>
+        </mirror>
+
+        <!-- 7. 官方中央仓库（最后兜底） -->
+        <mirror>
+            <id>mirror-central</id>
+            <name>Maven Central Mirror</name>
+            <url>https://repo1.maven.org/maven2</url>
+            <mirrorOf>central-repo</mirrorOf>
         </mirror>
     </mirrors>
+
+    <!-- 第二步：配置仓库优先级链（移除无效的timeout元素） -->
     <profiles>
+        <profile>
+            <id>repo-chain-full</id>
+            <activation>
+                <activeByDefault>true</activeByDefault> <!-- 默认激活 -->
+            </activation>
+            <repositories>
+                <!-- 1. 公司私服仓库 -->
+                <repository>
+                    <id>nexus-repo</id>
+                    <name>Company Private Repository</name>
+                    <url>http://192.168.13.86:8081/repository/maven-public/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </repository>
+
+                <!-- 2. 阿里仓库 -->
+                <repository>
+                    <id>aliyun-repo</id>
+                    <name>Aliyun Public Repository</name>
+                    <url>https://maven.aliyun.com/repository/public</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </repository>
+
+                <!-- 3. 华为云仓库 -->
+                <repository>
+                    <id>huawei-repo</id>
+                    <name>Huawei Cloud Public Repository</name>
+                    <url>https://repo.huaweicloud.com/repository/maven/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </repository>
+
+                <!-- 4. 清华大学仓库 -->
+                <repository>
+                    <id>tsinghua-repo</id>
+                    <name>Tsinghua University Repository</name>
+                    <url>https://mirrors.tuna.tsinghua.edu.cn/maven2/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </repository>
+
+                <!-- 5. 中科大仓库 -->
+                <repository>
+                    <id>ustc-repo</id>
+                    <name>USTC Repository</name>
+                    <url>https://mirrors.ustc.edu.cn/maven/maven2/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </repository>
+
+                <!-- 6. Sonatype 仓库 -->
+                <repository>
+                    <id>sonatype-repo</id>
+                    <name>Sonatype Public Repository</name>
+                    <url>https://oss.sonatype.org/content/groups/public/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </repository>
+
+                <!-- 7. 官方中央仓库（兜底） -->
+                <repository>
+                    <id>central-repo</id>
+                    <name>Maven Central Repository</name>
+                    <url>https://repo1.maven.org/maven2</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </repository>
+            </repositories>
+
+            <!-- 插件仓库同步配置（避免插件下载失败） -->
+            <pluginRepositories>
+                <pluginRepository>
+                    <id>nexus-repo</id>
+                    <name>Company Private Plugin Repository</name>
+                    <url>http://192.168.13.86:8081/repository/maven-public/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>true</enabled>
+                    </snapshots>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>aliyun-repo</id>
+                    <name>Aliyun Plugin Repository</name>
+                    <url>https://maven.aliyun.com/repository/public</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>huawei-repo</id>
+                    <name>Huawei Cloud Plugin Repository</name>
+                    <url>https://repo.huaweicloud.com/repository/maven/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>tsinghua-repo</id>
+                    <name>Tsinghua Plugin Repository</name>
+                    <url>https://mirrors.tuna.tsinghua.edu.cn/maven2/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>ustc-repo</id>
+                    <name>USTC Plugin Repository</name>
+                    <url>https://mirrors.ustc.edu.cn/maven/maven2/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>sonatype-repo</id>
+                    <name>Sonatype Plugin Repository</name>
+                    <url>https://oss.sonatype.org/content/groups/public/</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </pluginRepository>
+                <pluginRepository>
+                    <id>central-repo</id>
+                    <name>Maven Central Plugin Repository</name>
+                    <url>https://repo1.maven.org/maven2</url>
+                    <releases>
+                        <enabled>true</enabled>
+                    </releases>
+                    <snapshots>
+                        <enabled>false</enabled>
+                    </snapshots>
+                </pluginRepository>
+            </pluginRepositories>
+        </profile>
     </profiles>
+
+    <!-- 激活完整的仓库链配置 -->
+    <activeProfiles>
+        <activeProfile>repo-chain-full</activeProfile>
+    </activeProfiles>
 </settings>

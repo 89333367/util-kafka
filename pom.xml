@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>sunyu.util</groupId>
     <artifactId>util-kafka</artifactId>
-    <!-- {kafka-clients.version}_{util.version}_{jdk.version}_{architecture.version} -->
-    <version>0.9.0.1_1.0_jdk8_x64</version>
+    <!-- {kafka-clients.version}_{util.version}_{jdk.version} -->
+    <version>0.9.0.1_2.0_jdk8</version>
 
     <properties>
         <java.version>1.8</java.version>
@@ -35,19 +35,21 @@
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
-            <version>5.8.41</version>
+            <version>5.8.43</version>
+            <optional>true</optional>
         </dependency>
         <!-- https://central.sonatype.com/artifact/org.apache.kafka/kafka-clients/versions -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
             <version>0.9.0.1</version>
+            <optional>true</optional>
         </dependency>
         <!-- https://central.sonatype.com/artifact/org.junit.jupiter/junit-jupiter/versions -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.14.0</version>
+            <version>5.14.2</version>
             <scope>test</scope>
         </dependency>
         <!-- https://central.sonatype.com/artifact/log4j/log4j/versions -->
@@ -74,14 +76,108 @@
                             <goal>shade</goal>
                         </goals>
                         <configuration>
-                            <!-- 添加以下配置来禁用 dependency-reduced-pom.xml 文件生成 -->
+                            <!-- 禁用 dependency-reduced-pom.xml 文件生成 -->
                             <createDependencyReducedPom>false</createDependencyReducedPom>
+                            <!-- 重命名包：拆分多个relocation，每个指定明确的源pattern -->
                             <relocations>
-                                <!--<relocation>
-                                    <pattern>com.fasterxml.jackson</pattern>
-                                    <shadedPattern>shaded.com.fasterxml.jackson</shadedPattern>
-                                </relocation>-->
+                                <!-- Apache 相关包 -->
+                                <relocation>
+                                    <pattern>org.apache</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.org.apache</shadedPattern>
+                                </relocation>
+                                <!-- SLF4J 相关包 -->
+                                <relocation>
+                                    <pattern>org.slf4j</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.org.slf4j</shadedPattern>
+                                </relocation>
+                                <!-- Spring 相关包 -->
+                                <relocation>
+                                    <pattern>org.springframework</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.org.springframework</shadedPattern>
+                                </relocation>
+                                <!-- JUnit 相关包 -->
+                                <relocation>
+                                    <pattern>org.junit</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.org.junit</shadedPattern>
+                                </relocation>
+                                <!-- LatencyUtils 相关包 -->
+                                <relocation>
+                                    <pattern>org.latencyutils</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.org.latencyutils</shadedPattern>
+                                </relocation>
+                                <!-- HDRHistogram 相关包 -->
+                                <relocation>
+                                    <pattern>org.hdrhistogram</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.org.hdrhistogram</shadedPattern>
+                                </relocation>
+                                <!-- JetBrains 相关包 -->
+                                <relocation>
+                                    <pattern>org.jetbrains</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.org.jetbrains</shadedPattern>
+                                </relocation>
+                                <!-- FasterXML 相关包 -->
+                                <relocation>
+                                    <pattern>com.fasterxml</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.com.fasterxml</shadedPattern>
+                                </relocation>
+                                <!-- Google 相关包 -->
+                                <relocation>
+                                    <pattern>com.google</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.com.google</shadedPattern>
+                                </relocation>
+                                <!-- Netty 相关包 -->
+                                <relocation>
+                                    <pattern>io.netty</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.io.netty</shadedPattern>
+                                </relocation>
+                                <!-- Reactor 相关包 -->
+                                <relocation>
+                                    <pattern>io.projectreactor</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.io.projectreactor</shadedPattern>
+                                </relocation>
+                                <!-- Zipkin 相关包 -->
+                                <relocation>
+                                    <pattern>io.zipkin</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.io.zipkin</shadedPattern>
+                                </relocation>
+                                <!-- ReactiveX 相关包 -->
+                                <relocation>
+                                    <pattern>io.reactivex</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.io.reactivex</shadedPattern>
+                                </relocation>
+                                <!-- Javax enterprise 相关包 -->
+                                <relocation>
+                                    <pattern>javax.enterprise</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.javax.enterprise</shadedPattern>
+                                </relocation>
+                                <!-- Javax inject 相关包 -->
+                                <relocation>
+                                    <pattern>javax.inject</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.javax.inject</shadedPattern>
+                                </relocation>
+                                <!-- Hutool 相关包 -->
+                                <relocation>
+                                    <pattern>cn.hutool</pattern>
+                                    <shadedPattern>relocations.${project.groupId}.cn.hutool</shadedPattern>
+                                </relocation>
                             </relocations>
+                            <transformers>
+                                <!-- 合并META-INF/services文件（插件会自动根据relocation重写类名） -->
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                <!-- 处理Apache的META-INF/DISCLAIMER文件 -->
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>META-INF/DISCLAIMER</resource>
+                                </transformer>
+                                <!-- 处理MANIFEST.MF文件 -->
+                                <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <manifestEntries>
+                                        <Multi-Release>true</Multi-Release>
+                                    </manifestEntries>
+                                </transformer>
+                            </transformers>
                             <shadedArtifactAttached>true</shadedArtifactAttached>
                             <shadedClassifierName>shaded</shadedClassifierName>
                             <filters>
@@ -92,7 +188,6 @@
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
-                                        <!-- 可选：保留其他静态资源，必要时再按需排除 -->
                                     </excludes>
                                 </filter>
                             </filters>
@@ -107,7 +202,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <phase>compile</phase>
@@ -135,7 +230,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.1</version>
+                <version>3.15.0</version>
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>

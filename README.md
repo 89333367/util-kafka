@@ -17,8 +17,8 @@
 <dependency>
     <groupId>sunyu.util</groupId>
     <artifactId>util-kafka</artifactId>
-    <!-- {kafka-clients.version}_{util.version}_{jdk.version}_{architecture.version} -->
-    <version>0.9.0.1_1.0_jdk8_x64</version>
+    <!-- {kafka-clients.version}_{util.version}_{jdk.version} -->
+    <version>0.9.0.1_2.0_jdk8</version>
     <classifier>shaded</classifier>
 </dependency>
 ```
