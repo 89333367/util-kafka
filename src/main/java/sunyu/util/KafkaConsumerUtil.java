@@ -1,29 +1,18 @@
 package sunyu.util;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.concurrent.locks.ReentrantLock;
-
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.exceptions.ExceptionUtil;
+import cn.hutool.log.Log;
+import cn.hutool.log.LogFactory;
+import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
-import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.exceptions.ExceptionUtil;
-import cn.hutool.core.thread.ThreadUtil;
-import cn.hutool.log.Log;
-import cn.hutool.log.LogFactory;
+import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * kafka消费者工具
@@ -105,8 +94,51 @@ public class KafkaConsumerUtil implements AutoCloseable {
         });
         log.info("[构建{}] 结束", this.getClass().getSimpleName());
         this.config = config;
-        //增加心跳功能
-        ThreadUtil.execute(this::heartbeat);
+
+        //增加心跳功能，模拟心跳，避免kafka超过30秒没有poll会触发再平衡
+        Runnable task = () -> {
+            try {
+                config.lock.lock();
+                TopicPartition[] partitions = config.consumer.assignment().toArray(new TopicPartition[0]);
+                config.consumer.pause(partitions);
+                //log.debug("维持心跳");
+                ConsumerRecords<String, String> records = config.consumer.poll(0);
+                if (!records.isEmpty()) {
+                    log.info("[重置拉取偏移量] 避免丢失数据 开始");
+                    Map<TopicPartition, Long> firstOffsets = new HashMap<>();
+                    for (ConsumerRecord<String, String> record : records) {
+                        TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
+                        if (!firstOffsets.containsKey(topicPartition)) {
+                            firstOffsets.put(topicPartition, record.offset());
+                        }
+                    }
+                    firstOffsets.forEach((topicPartition, offset) -> {
+                        // seek offset 回退，下次抓取还从这里抓取
+                        config.consumer.seek(topicPartition, offset);
+                    });
+                    log.info("[重置拉取偏移量] 避免丢失数据 结束");
+                }
+                config.consumer.resume(partitions);
+            } catch (Exception e) {
+                log.warn("[模拟kafka心跳失败] {}", ExceptionUtil.stacktraceToString(e));
+            } finally {
+                config.lock.unlock();
+            }
+        };
+        // 调用scheduleWithFixedDelay执行任务
+        // 参数说明：
+        // task：要执行的任务
+        // initialDelay：首次执行的延迟时间（0表示程序启动后立即执行第一次）
+        // delay：上一次任务执行完成后，到下一次任务开始的间隔（5秒）
+        // unit：时间单位（秒）
+        config.scheduledExecutorService.scheduleWithFixedDelay(
+                task,
+                0,          // 初始延迟0秒
+                5,          // 任务完成后延迟5秒执行下一次
+                TimeUnit.SECONDS
+        );
+        // 程序关闭时优雅停止调度器（避免线程泄露）
+        Runtime.getRuntime().addShutdownHook(new Thread(config.scheduledExecutorService::shutdown));
     }
 
     private static class Config {
@@ -114,6 +146,7 @@ public class KafkaConsumerUtil implements AutoCloseable {
         private final Properties props = new Properties();// Kafka配置属性
         private final List<String> topics = new ArrayList<>();//消费主题列表
         private final ReentrantLock lock = new ReentrantLock();//可重入互斥锁
+        private final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();// 单线程的定时任务调度器，避免任务并发执行
     }
 
     public static class Builder {
@@ -196,43 +229,6 @@ public class KafkaConsumerUtil implements AutoCloseable {
     }
 
     /**
-     * 模拟心跳，避免kafka超过30秒没有poll会触发再平衡
-     */
-    private void heartbeat() {
-        while (true) {
-            //log.debug("[模拟kafka心跳]");
-            try {
-                config.lock.lock();
-                TopicPartition[] partitions = config.consumer.assignment().toArray(new TopicPartition[0]);
-                config.consumer.pause(partitions);
-                //log.debug("维持心跳");
-                ConsumerRecords<String, String> records = config.consumer.poll(0);
-                if (!records.isEmpty()) {
-                    log.info("[重置拉取偏移量] 避免丢失数据 开始");
-                    Map<TopicPartition, Long> firstOffsets = new HashMap<>();
-                    for (ConsumerRecord<String, String> record : records) {
-                        TopicPartition topicPartition = new TopicPartition(record.topic(), record.partition());
-                        if (!firstOffsets.containsKey(topicPartition)) {
-                            firstOffsets.put(topicPartition, record.offset());
-                        }
-                    }
-                    firstOffsets.forEach((topicPartition, offset) -> {
-                        // seek offset 回退，下次抓取还从这里抓取
-                        config.consumer.seek(topicPartition, offset);
-                    });
-                    log.info("[重置拉取偏移量] 避免丢失数据 结束");
-                }
-                config.consumer.resume(partitions);
-            } catch (Exception e) {
-                log.warn("[模拟kafka心跳失败] {}", ExceptionUtil.stacktraceToString(e));
-            } finally {
-                config.lock.unlock();
-            }
-            ThreadUtil.sleep(1000 * 5);
-        }
-    }
-
-    /**
      * 拉取数据，单条处理
      *
      * @param recordHandler
@@ -288,7 +284,7 @@ public class KafkaConsumerUtil implements AutoCloseable {
      * @param recordsHandler 拉取到的消息处理函数
      */
     public void pollRecords(Long pollTime,
-            java.util.function.Consumer<ConsumerRecords<String, String>> recordsHandler) {
+                            java.util.function.Consumer<ConsumerRecords<String, String>> recordsHandler) {
         while (true) {
             Map<TopicPartition, Long> recordsFirstOffsets = new HashMap<>();
             Map<TopicPartition, OffsetAndMetadata> recordsCommitOffsets = new HashMap<>();
